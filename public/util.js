@@ -6,6 +6,9 @@ const newId = (p = '') => p + Math.random().toString(36).slice(2, 8) + Date.now(
 const clone = o => JSON.parse(JSON.stringify(o));
 const thColl = new Intl.Collator('th');
 const TH_DIGITS = false;
+const APP_VERSION = 'v21';
+const APP_CREDIT = '© 2569 ClassFolio · นรากรณ์ จูงาม · สงวนลิขสิทธิ์';
+const APP_FREE = 'ใช้ได้ฟรีสำหรับครู';
 
 const ICONS = {
   home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',

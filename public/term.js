@@ -36,10 +36,12 @@ function newTermDialog() {
       <label class="row small"><input type="checkbox" id="ntArc" checked> ย้ายรายวิชาเดิมเข้าคลังภาคเรียนเก่า</label>
     </div>`;
   const d = dialog('เริ่มภาคเรียนใหม่', body, [{ label: 'ยกเลิก', cls: 'ghost' }, {
-    label: 'เริ่มภาคเรียนใหม่', cls: 'pri', fn: dd => {
+    label: 'เริ่มภาคเรียนใหม่', cls: 'pri', fn: async dd => {
       const picks = Array.from(dd.querySelectorAll('.nt-row')).filter(r => r.querySelector('[data-nt="on"]').checked);
       if (!picks.length) { toast('เลือกอย่างน้อย 1 รายวิชา'); return false; }
       if (picks.some(r => !r.querySelector('[data-nt="code"]').value.trim())) { toast('ใส่รหัสวิชาให้ครบ'); return false; }
+      /* เก็บสำเนาถาวรของภาคเรียนที่จบก่อน (ไม่ถูกลบอัตโนมัติ) */
+      try { await flush(); const f0 = S.courses.find(x => x.id === picks[0].dataset.cid); await saveBackupNow('term', 'สิ้น' + termLabel(f0)); S.backups = await Store.listBackups(); } catch (e) { console.warn(e); }
       const opt = { ros: !!($('#ntRos', dd) && $('#ntRos', dd).checked), stu: $('#ntStu', dd).checked, struct: $('#ntStruct', dd).checked, desc: $('#ntDesc', dd).checked, tt: $('#ntTT', dd).checked, arc: $('#ntArc', dd).checked };
       const made = picks.map(r => {
         const f = S.courses.find(x => x.id === r.dataset.cid), v = k => r.querySelector(`[data-nt="${k}"]`).value.trim();

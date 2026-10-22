@@ -146,7 +146,7 @@ function dialog(title, body, buttons, opts) {
   const f = d.querySelector('.dlg-f');
   (buttons || []).forEach(b => {
     const el = document.createElement('button'); el.className = 'btn ' + (b.cls || ''); el.textContent = b.label; el.type = 'button';
-    el.onclick = async () => { const r = b.fn ? await b.fn(d) : true; if (r !== false) close(); };
+    el.onclick = async () => { if (el.disabled) return; el.disabled = true; let r; try { r = b.fn ? await b.fn(d) : true; } finally { el.disabled = false; } if (r !== false) close(); };
     f.appendChild(el);
   });
   const close = () => { d.close(); d.remove(); };
@@ -362,14 +362,19 @@ function viewSettings() {
       <div class="field"><span>สีประจำระบบ</span><div class="row">${PALETTES.map(([k, n, col]) => `<button class="btn ${st.palette === k ? 'pri' : ''}" data-act="palette-set" data-v="${k}"><span style="width:14px;height:14px;border-radius:50%;background:${col};display:inline-block"></span> ${n}</button>`).join('')}</div></div>
       <div class="field" style="margin-top:12px"><span>โหมดสี</span><div class="seg">${[['system', 'ตามเครื่อง'], ['light', 'สว่าง'], ['dark', 'มืด']].map(([k, n]) => `<button data-act="theme-set" data-v="${k}" class="${st.theme === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>
       <div class="card-h" style="margin-top:22px"><h2>การสำรองข้อมูล</h2><span class="chip ok">${ico('check')} อัตโนมัติ</span></div>
-      <p class="small" style="margin:0 0 10px">ระบบบันทึกทุกครั้งที่พิมพ์ และสำรองข้อมูลทั้งหมดให้เองวันละ 1 ครั้ง เก็บย้อนหลัง ${Store.mode === 'firebase' ? 14 : 7} วัน ถ้ากรอกผิดหรือลบพลาด กู้คืนจากรายการนี้ได้</p>
-      <div style="display:grid;gap:6px">${(S.backups || []).length ? S.backups.map(b => `<div class="row" style="justify-content:space-between;background:var(--panel-2);border-radius:10px;padding:7px 12px"><span><b>${esc(thaiDate(b.at))}</b> <span class="note">${new Date(b.at).toTimeString().slice(0, 5)} น. · ${b.n} รายวิชา${b.pre ? ' · ก่อนกู้คืน' : ''}</span></span><button class="btn sm" data-act="restoreBk" data-v="${b.id}">กู้คืนฉบับนี้</button></div>`).join('') : '<p class="note">ยังไม่มีฉบับสำรอง</p>'}</div>
+      <p class="small" style="margin:0 0 8px">ระบบบันทึกทุกครั้งที่พิมพ์ และสำรองข้อมูลทั้งหมดให้เองวันละ 1 ครั้ง ถ้ากรอกผิดหรือลบพลาด กู้คืนจากรายการนี้ได้</p>
+      ${backupListHtml()}
       <details style="margin-top:12px"><summary class="small" style="cursor:pointer;color:var(--muted)">ตัวเลือกเพิ่มเติม</summary>
         <div class="row" style="margin-top:10px"><button class="btn sm" data-act="backup">${ico('download')} ดาวน์โหลดสำเนาเก็บเอง</button><label class="btn sm">${ico('upload')} นำเข้าจากไฟล์<input type="file" accept=".json,application/json" id="restoreFile" hidden></label>${Store.mode === 'local' ? '<button class="btn sm" data-act="demo">สร้างข้อมูลตัวอย่าง</button>' : ''}</div>
         <p class="note" style="margin-top:6px">ใช้เมื่อต้องการย้ายข้อมูลข้ามบัญชี หรือเก็บสำเนาไว้ในเครื่องตัวเอง</p>
       </details>
       ${demoN ? `<button class="btn sm danger" data-act="delDemo" style="margin-top:12px">${ico('trash')} ลบข้อมูลตัวอย่าง (${demoN} วิชา)</button>` : ''}
     </div>
+  </div>
+  <div class="card about">
+    <img src="icons/icon-192.png" alt="" width="56" height="56">
+    <div class="about-t"><b>ClassFolio <span class="chip acc">${APP_VERSION}</span></b><small>Smart Teacher Workspace · สมุดวัดผลและ ปพ.5 ออนไลน์</small></div>
+    <div class="about-c"><span class="chip ok">${APP_FREE}</span><small>${APP_CREDIT}</small></div>
   </div>`;
 }
 
@@ -942,14 +947,45 @@ async function installApp() {
 }
 
 /* ---------------- สำรองอัตโนมัติ ---------------- */
-const BK_KEEP = () => Store.mode === 'firebase' ? 14 : 7;
+const BK_TAG = { term: ['ภาคเรียน · เก็บถาวร', 'acc'], day: ['รายวัน', ''], week: ['รายสัปดาห์', ''], month: ['สิ้นเดือน', ''], pre: ['ก่อนกู้คืน', 'warn'] };
+function backupListHtml() {
+  const R = BK_RULE(), list = (S.backups || []).slice().sort((a, b) => b.at - a.at), plan = bkPlan(list);
+  const rules = `<div class="bk-rules">${[['รายวัน', R.days + ' วัน'], R.weeks ? ['รายสัปดาห์', R.weeks + ' สัปดาห์'] : null, R.months ? ['สิ้นเดือน', R.months + ' เดือน'] : null, ['ตอนเริ่มภาคเรียนใหม่', R.terms === Infinity ? 'ตลอดไป' : R.terms + ' ชุดล่าสุด']].filter(Boolean).map(([a, b]) => `<span><small>${a}</small><b>${b}</b></span>`).join('')}</div>`;
+  const row = b => { const k = plan.get(b.id) || bkKind(b), t = BK_TAG[k] || BK_TAG.day; return `<div class="bk-row${k === 'term' ? ' term' : ''}"><span class="bk-t"><b>${esc(b.label || thaiDate(b.at))}</b><small>${b.label ? esc(thaiDate(b.at)) + ' · ' : ''}${new Date(b.at).toTimeString().slice(0, 5)} น. · ${b.n} รายวิชา</small></span><span class="chip ${t[1]}">${t[0]}</span><button class="btn sm" data-act="restoreBk" data-v="${b.id}">กู้คืน</button></div>`; };
+  if (!list.length) return rules + '<p class="note">ยังไม่มีฉบับสำรอง</p>';
+  const terms = list.filter(b => bkKind(b) === 'term'), rest = list.filter(b => bkKind(b) !== 'term');
+  return rules + `${terms.length ? `<div class="bk-h">สำรองถาวรรายภาคเรียน</div><div class="bk-list">${terms.map(row).join('')}</div><div class="bk-h">สำรองอัตโนมัติ</div>` : ''}<div class="bk-list">${rest.slice(0, 6).map(row).join('')}</div>${rest.length > 6 ? `<details class="bk-more"><summary class="small">ดูฉบับเก่ากว่านี้อีก ${rest.length - 6} ฉบับ</summary><div class="bk-list">${rest.slice(6).map(row).join('')}</div></details>` : ''}`;
+}
+/* เก็บสำเนาแบบขั้นบันได: รายวัน 14 วัน · รายสัปดาห์ 8 สัปดาห์ · สิ้นเดือน 12 เดือน · ภาคเรียน ตลอดไป
+   (โหมดทดลองในเบราว์เซอร์พื้นที่น้อย: รายวัน 7 วัน และภาคเรียนล่าสุด 4 ชุด) */
+const BK_RULE = () => Store.mode === 'firebase' ? { days: 14, weeks: 8, months: 12, terms: Infinity } : { days: 7, weeks: 0, months: 0, terms: 4 };
+const BK_KEEP = () => BK_RULE().days;
+function bkKind(b) { return b.kind || (b.pre ? 'pre' : 'day'); }
+function bkPlan(list, now) {
+  now = now || Date.now();
+  const R = BK_RULE(), D = 864e5, keep = new Map(), sorted = list.slice().sort((a, b) => b.at - a.at);
+  sorted.filter(b => bkKind(b) === 'term').forEach((b, i) => { if (i < R.terms) keep.set(b.id, 'term'); });
+  sorted.filter(b => bkKind(b) === 'pre').slice(0, 3).forEach(b => keep.set(b.id, 'pre'));
+  const daily = sorted.filter(b => bkKind(b) === 'day'), wk = new Set(), mo = new Set();
+  daily.forEach(b => {
+    const age = now - b.at, d = new Date(b.at);
+    const w = Math.floor((b.at + 3 * D) / (7 * D)), m = d.getFullYear() * 12 + d.getMonth();
+    if (age < R.days * D) keep.set(b.id, 'day');
+    else if (R.weeks && age < R.weeks * 7 * D && !wk.has(w)) { wk.add(w); keep.set(b.id, 'week'); }
+    else if (R.months && age < (R.months * 31) * D && !mo.has(m)) { mo.add(m); keep.set(b.id, 'month'); }
+    wk.add(w); mo.add(m);
+  });
+  return keep;
+}
 function todayId() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-async function saveBackupNow(pre) {
-  const id = pre ? todayId() + '-pre' + Date.now() : todayId();
+async function saveBackupNow(kind, label) {
+  kind = kind === true ? 'pre' : kind === false || !kind ? 'day' : kind;
+  const id = kind === 'pre' ? todayId() + '-pre' + Date.now() : kind === 'term' ? 'term-' + Date.now() : todayId();
   const json = JSON.stringify({ app: 'samutwadphon', version: 1, exportedAt: new Date().toISOString(), courses: S.courses, roster: S.settings.roster || null });
-  await Store.saveBackup({ id, at: Date.now(), n: S.courses.length, pre: !!pre }, json);
-  const list = await Store.listBackups();
-  for (const b of list.slice(BK_KEEP())) await Store.deleteBackup(b.id);
+  const meta = { id, at: Date.now(), n: S.courses.length, pre: kind === 'pre', kind }; if (label) meta.label = String(label);
+  await Store.saveBackup(meta, json);
+  const list = await Store.listBackups(), keep = bkPlan(list);
+  for (const b of list) if (!keep.has(b.id)) await Store.deleteBackup(b.id);
 }
 async function autoBackup() {
   try {
@@ -982,7 +1018,7 @@ function renderLanding(user, msg, pending) {
         <div class="ld-r small"><span>4</span><span>3.5</span><span>3</span><span>2.5</span><span>2</span><span>1.5</span><span>1</span><span>0</span></div></div>
       <div class="ld-card c"><div class="ld-h" data-hue="rose"><span class="chipico">${ico('print')}</span><b>เล่ม ปพ.5</b></div><div class="ld-r"><span>ทุกหน้าครบถ้วน</span><span class="chip ok">พร้อมพิมพ์</span></div></div>
     </div></div>
-  </div></div>`;
+  </div><footer class="ld-foot"><span>${APP_CREDIT}</span><span class="ld-free">${APP_FREE}</span></footer></div>`;
   /* ถ้าหน้าแรกแสดงอยู่แล้ว เปลี่ยนเฉพาะฝั่งข้อความ ภาพไม่ต้องโหลดใหม่ */
   if (keep) { const t = document.createElement('div'); t.innerHTML = html; $('#app .ld-copy').replaceWith(t.querySelector('.ld-copy')); }
   else $('#app').innerHTML = html;
