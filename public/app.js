@@ -613,16 +613,20 @@ function newCourseDialog() {
 
 /* ---------------- กล่อง: นำเข้ารายชื่อ ---------------- */
 function parseStudents(text) {
+  /* อ่านได้ทั้งแบบแยกคอลัมน์ และแบบชื่อ-นามสกุลอยู่ช่องเดียวกัน (เว้นวรรคคั่น) · ข้ามแถวหัวตาราง */
+  const head = /(ชื่อ|นามสกุล|สกุล|เลขประจำตัว|เลขที่|คำนำหน้า|ลำดับ)/;
   return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
-    let parts = line.includes('\t') ? line.split('\t').map(x => x.trim()).filter(Boolean) : line.split(/\s+/);
+    let parts = line.split('\t').map(x => x.trim()).filter(Boolean).flatMap(x => x.split(/\s+/));
+    if (parts.length && parts.every(x => !/\d/.test(x)) && head.test(line) && !PREFIXES.some(p => line.includes(p))) return null;
     let code = '', prefix = '';
     if (/^\d+$/.test(parts[0]) && parts.length > 1 && /^\d+$/.test(parts[1])) parts.shift(); // ข้ามคอลัมน์เลขที่
     if (/^\d{3,}$/.test(parts[0])) code = parts.shift();
+    else if (/^\d{1,2}$/.test(parts[0]) && parts.length > 1) parts.shift(); // มีแต่เลขที่ ไม่มีเลขประจำตัว
     if (parts[0] && PREFIXES.includes(parts[0])) prefix = parts.shift();
-    else if (parts[0]) { const p = PREFIXES.find(x => parts[0].startsWith(x) && parts[0].length > x.length); if (p) { prefix = p; parts[0] = parts[0].slice(p.length); } }
+    else if (parts[0]) { const p = PREFIXES.slice().sort((a, b) => b.length - a.length).find(x => parts[0].startsWith(x) && parts[0].length > x.length); if (p) { prefix = p; parts[0] = parts[0].slice(p.length); } }
     const first = parts.shift() || '', last = parts.join(' ');
     return { code, prefix, first, last };
-  }).filter(s => s.first);
+  }).filter(s => s && s.first);
 }
 function importDialog() {
   const c = cur();
@@ -645,7 +649,7 @@ function importDialog() {
   }], { wide: true });
   $('#impText', d).addEventListener('input', e => {
     const list = parseStudents(e.target.value);
-    $('#impPrev', d).innerHTML = list.length ? `<p class="small"><b>ตรวจก่อนนำเข้า ${list.length} คน</b></p><div class="tbl-wrap" style="max-height:220px"><table class="tbl"><thead><tr><th>#</th><th>เลขประจำตัว</th><th>คำนำหน้า</th><th>ชื่อ</th><th>นามสกุล</th></tr></thead><tbody>${list.map((s, i) => `<tr><td class="n">${i + 1}</td><td>${esc(s.code) || '<span class="chip warn">ไม่มี</span>'}</td><td>${esc(s.prefix)}</td><td>${esc(s.first)}</td><td>${esc(s.last)}</td></tr>`).join('')}</tbody></table></div>` : '';
+    $('#impPrev', d).innerHTML = list.length ? `<p class="small"><b>ตรวจก่อนนำเข้า ${list.length} คน</b></p><div class="tbl-wrap" style="max-height:220px"><table class="tbl"><thead><tr><th>ลำดับ</th><th>เลขประจำตัว</th><th>คำนำหน้า</th><th>ชื่อ</th><th>นามสกุล</th></tr></thead><tbody>${list.map((s, i) => `<tr><td class="n">${i + 1}</td><td>${esc(s.code) || '<span class="chip warn">ไม่มี</span>'}</td><td>${esc(s.prefix)}</td><td>${esc(s.first)}</td><td>${esc(s.last)}</td></tr>`).join('')}</tbody></table></div>` : '';
   });
 }
 

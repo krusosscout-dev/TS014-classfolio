@@ -136,6 +136,7 @@ h1 { font-size: 1.45rem; } h2 { font-size: 1.15rem; } h3 { font-size: 1rem; }
 .view { padding-block: 8px 64px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; align-content: start; min-width: 0; }
 .banner { border-radius: 12px; padding: 10px 14px; font-size: .86rem; display: flex; gap: 10px; align-items: center; background: color-mix(in srgb, var(--h-amber) 13%, var(--panel)); color: var(--ink-2); }
 .banner .ico { color: var(--h-amber); }
+.banner { flex-wrap: wrap; } .banner > span { flex: 1 1 220px; min-width: 0; }
 .banner b { color: var(--ink); }
 
 /* ---------- แถบไอคอนลอยด้านล่าง (จอเล็ก) ---------- */

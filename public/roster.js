@@ -29,6 +29,14 @@ function syncCourseFromRoster(c, k) {
   const extra = Calc.activeStudents(c).filter(s => !order.includes(s.id)).length;
   return { add, upd, extra };
 }
+/* แยกชื่อ-นามสกุลที่เคยนำเข้ามาอยู่ช่องเดียวกัน */
+function needSplit(list) { return (list || []).filter(s => !String(s.last || '').trim() && /\s/.test(String(s.first || '').trim())); }
+function splitNames(list) {
+  const n = needSplit(list);
+  n.forEach(s => { const p = String(s.first).trim().split(/\s+/); s.first = p.shift(); s.last = p.join(' '); });
+  return n.length;
+}
+function splitBanner(n, act, v) { return n ? `<div class="banner">${ico('alert')}<span><b>มี ${n} คนที่ชื่อและนามสกุลอยู่ช่องเดียวกัน</b> กดปุ่มเพื่อแยกนามสกุลไปไว้ช่องของมันให้อัตโนมัติ</span><button class="btn sm pri" data-act="${act}" data-v="${v}" style="margin-left:auto">แยกชื่อ-นามสกุล</button></div>` : ''; }
 function nextGradeOf(g, p6up) {
   const i = GRADE_ORDER.indexOf(g); if (i < 0) return null;
   if (g === 'ม.6' || g === 'ม.3' && !rosterSorted().some(k => k.grade === 'ม.4')) return 'จบ';
@@ -61,6 +69,7 @@ function viewRoster() {
   return head + chips + `<div class="card">
     <div class="card-h"><h2>ชั้น ${esc(classOf(k))}</h2><span class="chip acc">${studs.length} คน</span>
       <span class="row" style="margin-left:auto;gap:6px"><button class="btn sm pri" data-act="rosterImport">${ico('upload')} วางรายชื่อจาก Excel</button><button class="btn sm" data-act="rosterAddStu">${ico('plus')} เพิ่มทีละคน</button><button class="btn sm" data-act="rosterSort">${ico('sort')} เรียงตามเลขประจำตัว</button><button class="btn sm" data-act="rosterEdit">${ico('pen')} แก้ชั้น/ห้อง</button><button class="btn sm ghost danger" data-act="rosterDel" aria-label="ลบชั้นนี้">${ico('trash')}</button></span></div>
+    ${splitBanner(needSplit(studs).length, 'rosterSplit', k.id)}
     ${usage}
     ${studs.length ? `<div class="tbl-wrap flat"><table class="tbl stack stu-tbl"><thead><tr><th>เลขที่</th><th class="l">เลขประจำตัว</th><th class="l">คำนำหน้า</th><th class="l">ชื่อ</th><th class="l">นามสกุล</th><th></th></tr></thead><tbody>
       ${studs.map(s => `<tr><td class="n" data-label="เลขที่">${s.no}</td>
@@ -112,7 +121,7 @@ function rosterImportDialog() {
   }], { wide: true });
   $('#rImp', d).addEventListener('input', e => {
     const list = parseStudents(e.target.value);
-    $('#rPrev', d).innerHTML = list.length ? `<p class="small"><b>ตรวจก่อนนำเข้า ${list.length} คน</b></p><div class="tbl-wrap" style="max-height:220px"><table class="tbl"><thead><tr><th>#</th><th>เลขประจำตัว</th><th>คำนำหน้า</th><th>ชื่อ</th><th>นามสกุล</th></tr></thead><tbody>${list.map((s, i) => `<tr><td class="n">${i + 1}</td><td>${esc(s.code) || '<span class="chip warn">ไม่มี</span>'}</td><td>${esc(s.prefix)}</td><td>${esc(s.first)}</td><td>${esc(s.last)}</td></tr>`).join('')}</tbody></table></div>` : '';
+    $('#rPrev', d).innerHTML = list.length ? `<p class="small"><b>ตรวจก่อนนำเข้า ${list.length} คน</b></p><div class="tbl-wrap" style="max-height:220px"><table class="tbl"><thead><tr><th>ลำดับ</th><th>เลขประจำตัว</th><th>คำนำหน้า</th><th>ชื่อ</th><th>นามสกุล</th></tr></thead><tbody>${list.map((s, i) => `<tr><td class="n">${i + 1}</td><td>${esc(s.code) || '<span class="chip warn">ไม่มี</span>'}</td><td>${esc(s.prefix)}</td><td>${esc(s.first)}</td><td>${esc(s.last)}</td></tr>`).join('')}</tbody></table></div>` : '';
   });
 }
 
@@ -152,6 +161,8 @@ const ROSTER_ACT = {
   rosterEdit() { const k = roster().classes.find(x => x.id === S.rosterCid); if (k) rosterClassDialog(k); },
   rosterImport() { rosterImportDialog(); },
   rosterPromote() { rosterPromoteDialog(); },
+  rosterSplit(v) { const k = roster().classes.find(x => x.id === v); if (!k) return; const n = splitNames(k.students); touchSettings(); render(); toast('แยกชื่อ-นามสกุลแล้ว ' + n + ' คน'); },
+  courseSplit() { const c = cur(); if (!c) return; snap(c); const n = splitNames(c.students); c.log = (c.log || []).concat({ t: Date.now(), text: 'แยกชื่อ-นามสกุล ' + n + ' คน' }); touch(c); render(); toast('แยกชื่อ-นามสกุลแล้ว ' + n + ' คน', { label: 'เลิกทำ', fn: undo }); },
   rosterAddStu() { const k = roster().classes.find(x => x.id === S.rosterCid); if (!k) return; k.students.push({ id: newId('s'), no: k.students.length + 1, code: '', prefix: '', first: 'นักเรียนใหม่', last: '' }); touchSettings(); render(); },
   rosterSort() { const k = roster().classes.find(x => x.id === S.rosterCid); if (!k) return; k.students.sort((a, b) => String(a.code).localeCompare(String(b.code), 'th', { numeric: true })).forEach((s, i) => s.no = i + 1); touchSettings(); render(); toast('เรียงเลขที่ตามเลขประจำตัวแล้ว'); },
   rosterDelStu(v) { const k = roster().classes.find(x => x.id === S.rosterCid); if (!k) return; const s = k.students.find(x => x.id === v); confirmBox('ลบออกจากทะเบียน', `ลบ "${esc(studentName(s))}" ออกจากทะเบียน ชั้น ${esc(classOf(k))} (รายวิชาที่มีชื่อนี้อยู่แล้วไม่เปลี่ยน)`, 'ลบ', () => { k.students = k.students.filter(x => x.id !== v); rosterRenumber(k); touchSettings(); render(); }); },
