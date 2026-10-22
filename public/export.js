@@ -9,7 +9,7 @@ function excelSheets(c, st) {
 
   /* 1) สรุปผลการเรียน */
   const r1 = [['เลขที่', 'เลขประจำตัว', 'คำนำหน้า', 'ชื่อ', 'สกุล'].concat(
-    units.map((u, i) => (u.isFinal ? 'ปลายภาค' : 'หน่วย ' + (i + 1)) + ` (${u.weight})`),
+    units.map(u => unitTag(c, u, 'long') + ` (${u.weight})`),
     [`ระหว่างภาค (${c.ratio ? c.ratio.mid : ''})`, 'รวม (100)', 'ระดับผลการเรียน', 'เวลาเรียน %', 'ขาด/ลา (ชม.)', 'คุณลักษณะฯ', 'อ่าน คิด เขียน', 'สมรรถนะ', 'แก้ตัวได้', 'หมายเหตุ'])];
   sum.rows.forEach(({ s, r }) => {
     const rem = (c.remedial || {})[s.id] || {};
@@ -22,7 +22,7 @@ function excelSheets(c, st) {
 
   /* 2) สมุดคะแนนดิบ */
   const cols = bookColumns(c);
-  const r2 = [['เลขที่', 'เลขประจำตัว', 'คำนำหน้า', 'ชื่อ', 'สกุล'].concat(cols.map(({ t, u }) => `${u.isFinal ? 'ปลายภาค' : 'น.' + (units.indexOf(u) + 1)} · ${t.name}${t.bonus ? ' (พิเศษ)' : ''}`))];
+  const r2 = [['เลขที่', 'เลขประจำตัว', 'คำนำหน้า', 'ชื่อ', 'สกุล'].concat(cols.map(({ t, u }) => `${unitTag(c, u, 'short')} · ${t.name}${t.bonus ? ' (พิเศษ)' : ''}`))];
   r2.push(['', '', '', 'คะแนนเต็ม', ''].concat(cols.map(({ t }) => Number(t.full) || 0)));
   studs.forEach(s => r2.push(id(s).concat(cols.map(({ t }) => { const v = Calc.num((c.scores[t.id] || {})[s.id]); return v === null ? '' : v; }))));
 

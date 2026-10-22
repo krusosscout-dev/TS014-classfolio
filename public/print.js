@@ -76,7 +76,7 @@ const Print = (function () {
     const th = units.reduce((a, u) => a + (Number(u.hours) || 0), 0);
     const body = `<h2 class="doc">โครงสร้างรายวิชา ${esc(c.name)} รหัสวิชา ${esc(c.code)}</h2>
       <table class="pt"><thead><tr><th style="width:12mm">หน่วยที่</th><th>ชื่อหน่วยการเรียนรู้</th><th>มาตรฐาน/ตัวชี้วัด</th><th style="width:16mm">เวลา (ชม.)</th><th style="width:18mm">น้ำหนักคะแนน</th></tr></thead>
-      <tbody>${units.map((u, i) => `<tr><td class="n">${u.isFinal ? '' : i + 1}</td><td>${esc(u.name)}</td><td>${esc(u.indicators).replace(/\n/g, '<br>')}</td><td class="n">${esc(u.hours || '')}</td><td class="n">${esc(u.weight)}</td></tr>`).join('')}
+      <tbody>${units.map((u, i) => `<tr><td class="n">${unitTag(c, u, 'no')}</td><td>${esc(u.name)}</td><td>${esc(u.indicators).replace(/\n/g, '<br>')}</td><td class="n">${esc(u.hours || '')}</td><td class="n">${esc(u.weight)}</td></tr>`).join('')}
       <tr><td colspan="3" class="c"><b>รวมตลอด${levelOfCourse(c) === 'ป' ? 'ปี' : 'ภาคเรียน'}</b></td><td class="n"><b>${th}</b></td><td class="n"><b>${tw}</b></td></tr></tbody></table>
       <p style="margin-top:3mm">อัตราส่วนคะแนนระหว่างเรียน : ปลาย${levelOfCourse(c) === 'ป' ? 'ปี' : 'ภาค'} = ${esc(c.ratio.mid)} : ${esc(c.ratio.final)}</p>`;
     return sheet(c, st, o, '3', body);
@@ -183,7 +183,7 @@ const Print = (function () {
   function p5(c, st, o) {
     const units = c.units || [];
     const rm = st.rounding;
-    const head = `<tr><th rowspan="2" style="width:10mm">เลขที่</th><th rowspan="2">ชื่อ - สกุล</th>${units.map((u, i) => `<th><div class="vt">${u.isFinal ? esc(u.name) : 'หน่วยที่ ' + (i + 1)}</div></th>`).join('')}<th><div class="vt">ระหว่างเรียน</div></th><th><div class="vt">รวม</div></th><th rowspan="2" style="width:13mm">ระดับ<br>ผลการ<br>เรียน</th></tr>
+    const head = `<tr><th rowspan="2" style="width:10mm">เลขที่</th><th rowspan="2">ชื่อ - สกุล</th>${units.map((u, i) => `<th><div class="vt">${unitTag(c, u, 'th') === u.name ? esc(u.name) : unitTag(c, u, 'th')}</div></th>`).join('')}<th><div class="vt">ระหว่างเรียน</div></th><th><div class="vt">รวม</div></th><th rowspan="2" style="width:13mm">ระดับ<br>ผลการ<br>เรียน</th></tr>
       <tr>${units.map(u => `<th>${esc(u.weight)}</th>`).join('')}<th>${esc(c.ratio.mid)}</th><th>100</th></tr>`;
     return studentTable(c, st, o, '5', 'บันทึกผลการเรียน', head, s => {
       const r = Calc.studentResult(c, s.id, st);

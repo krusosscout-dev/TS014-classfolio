@@ -416,6 +416,20 @@ const ACT = {
   },
   addTask() { taskDialog(null); },
   task(v) { taskDialog(v); },
+  addMid() {
+    const c = cur(); if (c.units.some(u => u.isMid)) return; snap(c);
+    const fi = c.units.findIndex(u => u.isFinal), mids = c.units.filter(u => !u.isFinal), at = Math.ceil(mids.length / 2);
+    const pos = mids.length ? c.units.indexOf(mids[at - 1]) + 1 : (fi < 0 ? c.units.length : fi);
+    const nm = 'สอบกลาง' + (levelOfCourse(c) === 'ป' || c.term === 'ปี' ? 'ปี' : 'ภาค');
+    const target = Number(c.ratio.mid) || 0, mw = mids.length ? Math.round(target * 0.25) : target;
+    /* หน่วยเดิมลดลงตามสัดส่วนเดิม ให้รวมกับสอบกลางภาคแล้วเท่ากับคะแนนระหว่างเรียน */
+    if (mids.length) { const w = mids.map(x => Number(x.weight) || 0), sum = w.reduce((a, b) => a + b, 0); Calc.distributeInt(sum ? w.map(x => x / sum * (target - mw)) : w.map(() => (target - mw) / mids.length), target - mw).forEach((v, i) => mids[i].weight = v); }
+    const u = newUnit(nm, mw); u.isMid = true; u.slots = 1;
+    c.units.splice(pos, 0, u);
+    const t = { id: newId('t'), name: nm, full: mw || 20, unit: u.id, weight: 1, bonus: false }; c.tasks.push(t); c.scores[t.id] = {};
+    log('เพิ่ม' + nm + ' ' + mw + ' คะแนน'); touch(c); render();
+    toast(`เพิ่ม${nm} ${mw} คะแนนแล้ว หน่วยอื่นปรับลดตามสัดส่วน · แก้คะแนนได้ในตาราง และแก้คะแนนเต็มของข้อสอบได้ที่หัวคอลัมน์ในสมุดคะแนน`, { label: 'เลิกทำ', fn: undo });
+  },
   addUnit() { const c = cur(); snap(c); const fi = c.units.findIndex(u => u.isFinal); c.units.splice(fi < 0 ? c.units.length : fi, 0, newUnit('หน่วยการเรียนรู้ที่ ' + (c.units.filter(u => !u.isFinal).length + 1), 0)); log('เพิ่มหน่วยการเรียนรู้'); touch(c); render(); },
   delUnit(v) {
     const c = cur(), u = c.units.find(x => x.id === v), n = Calc.unitTasks(c, v).length;
@@ -518,7 +532,7 @@ function taskDialog(tid) {
     <label class="field"><span>ชื่องาน</span><input class="inp" id="tName" value="${esc(t.name)}" placeholder="เช่น ใบงานที่ 1, สอบย่อย, ชิ้นงานกลุ่ม"></label>
     <div class="form-grid">
       <label class="field"><span>คะแนนเต็มของงานนี้</span><input class="inp" id="tFull" type="number" min="0" step="any" value="${esc(t.full)}"></label>
-      <label class="field"><span>อยู่ในหน่วย</span><select class="inp" id="tUnit">${c.units.map((u, i) => `<option value="${u.id}" ${u.id === t.unit ? 'selected' : ''}>${u.isFinal ? u.name : 'หน่วย ' + (i + 1) + ' ' + esc(u.name)}</option>`).join('')}</select></label>
+      <label class="field"><span>อยู่ในหน่วย</span><select class="inp" id="tUnit">${c.units.map((u, i) => `<option value="${u.id}" ${u.id === t.unit ? 'selected' : ''}>${u.isFinal || u.isMid ? esc(u.name) : unitTag(c, u, 'long') + ' ' + esc(u.name)}</option>`).join('')}</select></label>
       ${c.convert === 'weighted' ? `<label class="field"><span>น้ำหนักงาน (ส่วน)</span><input class="inp" id="tWeight" type="number" min="0" step="any" value="${esc(t.weight || 1)}"></label>` : ''}
     </div>
     <label class="row small"><input type="checkbox" id="tBonus" ${t.bonus ? 'checked' : ''}> คะแนนพิเศษ (บวกเพิ่มได้ แต่ไม่เกินคะแนนเต็มของหน่วย และไม่นับเป็นงานค้าง)</label>

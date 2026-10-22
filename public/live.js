@@ -131,13 +131,13 @@ function viewTeach(c) {
   const T = tt(), hp = Number(T.hrsPerPeriod) || 1;
   const ses = sessionsOf(c).slice().sort((a, b) => (b.date + String(b.period).padStart(2, '0')).localeCompare(a.date + String(a.period).padStart(2, '0')));
   const taught = ses.length * hp, total = Number(c.hours) || 0;
-  const units = (c.units || []).filter(u => !u.isFinal);
+  const units = (c.units || []).filter(u => !u.isFinal && !u.isMid);
   const byU = {}; ses.forEach(x => byU[x.unit] = (byU[x.unit] || 0) + hp);
   const n = Calc.activeStudents(c).length;
   return `
   <div class="card">
     <div class="card-h"><h2>ความคืบหน้าการสอน</h2><span class="chip acc">สอนแล้ว ${taught} จาก ${total} ชั่วโมง</span><button class="btn sm" data-act="teachPrint">${ico('print')} พิมพ์บันทึกการสอน</button><button class="btn sm pri" data-act="liveFor" data-v="${c.id}">${ico('check')} เปิด Live Class</button></div>
-    <div class="prog-list">${units.map((u, i) => { const h = byU[u.id] || 0, plan = Number(u.hours) || 0, pct = plan ? Math.min(100, h / plan * 100) : 0; return `<div class="prog-row" data-hue="${['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][i % 7]}"><span><b>หน่วย ${i + 1}</b> ${esc(u.name)}</span><div class="prog-bar"><i style="width:${pct}%"></i></div><span class="num">${h}/${plan || '–'} ชม.</span></div>`; }).join('')}</div>
+    <div class="prog-list">${units.map((u, i) => { const h = byU[u.id] || 0, plan = Number(u.hours) || 0, pct = plan ? Math.min(100, h / plan * 100) : 0; return `<div class="prog-row" data-hue="${['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][i % 7]}"><span><b>หน่วย ${unitNo(c, u)}</b> ${esc(u.name)}</span><div class="prog-bar"><i style="width:${pct}%"></i></div><span class="num">${h}/${plan || '–'} ชม.</span></div>`; }).join('')}</div>
   </div>
   <div class="card">
     <div class="card-h"><h2>บันทึกรายคาบ</h2><span class="note">${ses.length} คาบ · แตะเพื่อเปิดแก้ใน Live Class</span></div>

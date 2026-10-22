@@ -138,6 +138,15 @@ function courseFileTag(c) {
 function thaiDateFile(d) { d = d || new Date(); return String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + (d.getFullYear() + 543); }
 /* ชั้น/ห้อง เช่น "ม.1/2" · ถ้าไม่ใส่ห้อง (โรงเรียนมีห้องเดียว) แสดงเฉพาะชั้น "ป.4" */
 function classOf(c) { const g = String(c && c.grade || '').trim(), r = String(c && c.room != null ? c.room : '').trim(); return r ? g + '/' + r : g; }
+/* ป้ายหน่วย: หน่วยปกตินับเลขต่อกัน · สอบกลางภาค (isMid) และปลายภาค (isFinal) ไม่นับเลข
+   form: 'short' น.1/กลาง/ปลาย · 'long' หน่วย 1/กลางภาค/ปลายภาค · 'th' หน่วยที่ 1/ชื่อหน่วย · 'no' เลขอย่างเดียว */
+function unitNo(c, u) { return (c.units || []).filter(x => !x.isFinal && !x.isMid).indexOf(u) + 1; }
+function unitTag(c, u, form) {
+  const t = levelOfCourse(c) === 'ป' || c.term === 'ปี' ? 'ปี' : 'ภาค';
+  if (u.isFinal) return { short: 'ปลาย', long: 'ปลาย' + t, th: u.name, no: '' }[form];
+  if (u.isMid) return { short: 'กลาง', long: 'กลาง' + t, th: u.name, no: '' }[form];
+  const n = unitNo(c, u); return { short: 'น.' + n, long: 'หน่วย ' + n, th: 'หน่วยที่ ' + n, no: n }[form];
+}
 function levelOfCourse(c) { return c.level && c.level !== 'auto' ? c.level : Calc.levelOf(c.code); }
 function termLabel(c) { return levelOfCourse(c) === 'ป' || c.term === 'ปี' ? 'ปีการศึกษา ' + c.year : 'ภาคเรียนที่ ' + c.term + '/' + c.year; }
 function studentName(s) { return [s.prefix, s.first].filter(Boolean).join('') + (s.last ? ' ' + s.last : ''); }

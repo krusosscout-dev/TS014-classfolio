@@ -161,8 +161,8 @@ function viewBook(c) {
   if (!studs.length) return `<div class="card empty"><h3>ยังไม่มีรายชื่อนักเรียน</h3><p>เพิ่มหรือวางรายชื่อจาก Excel ก่อน แล้วจึงกรอกคะแนน</p><button class="btn pri" data-act="tab" data-v="students">${ico('users')} ไปที่รายชื่อนักเรียน</button></div>`;
   const spans = []; cols.forEach(cl => { const l = spans[spans.length - 1]; if (l && l.u === cl.u) l.n++; else spans.push({ u: cl.u, n: 1 }); });
   const rm = S.settings.rounding;
-  const head1 = `<tr><th class="sticky-l" rowspan="2">เลขที่</th><th class="sticky-l2" rowspan="2">ชื่อ - สกุล</th>${spans.map(sp => `<th class="unit-h" data-hue="${sp.u.isFinal ? 'rose' : ['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][units.indexOf(sp.u) % 7]}" colspan="${sp.n}">${esc(sp.u.isFinal ? sp.u.name : 'หน่วย ' + (units.indexOf(sp.u) + 1) + ' · ' + sp.u.name)}</th>`).join('')}<th class="unit-h" data-hue="indigo" colspan="${units.length + 2}">แปลงเป็นคะแนน ปพ.5 (จำนวนเต็ม)</th><th rowspan="2">ระดับ</th></tr>`;
-  const head2 = `<tr>${cols.map(({ t }) => `<th class="task-h" data-act="task" data-v="${t.id}" title="${esc(t.name)} · คลิกเพื่อแก้ไข"><span class="tn">${esc(t.name)}</span><span class="sub">${t.auto === 'bonus' ? '<span class="bonus">จาก Live Class</span>' : (t.bonus ? '<span class="bonus">+พิเศษ</span> ' : '') + 'เต็ม ' + esc(t.full)}${t.due ? '<br>ส่ง ' + esc(thaiDate(t.due).split(' ').slice(0, 2).join(' ')) : ''}</span></th>`).join('')}${units.map((u, i) => `<th>${u.isFinal ? 'ปลาย' : 'น.' + (i + 1)}<span class="sub">${esc(u.weight)}</span></th>`).join('')}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th></tr>`;
+  const head1 = `<tr><th class="sticky-l" rowspan="2">เลขที่</th><th class="sticky-l2" rowspan="2">ชื่อ - สกุล</th>${spans.map(sp => `<th class="unit-h" data-hue="${sp.u.isFinal ? 'rose' : sp.u.isMid ? 'amber' : ['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][units.indexOf(sp.u) % 7]}" colspan="${sp.n}">${esc(sp.u.isFinal || sp.u.isMid ? sp.u.name : unitTag(c, sp.u, 'long') + ' · ' + sp.u.name)}</th>`).join('')}<th class="unit-h" data-hue="indigo" colspan="${units.length + 2}">แปลงเป็นคะแนน ปพ.5 (จำนวนเต็ม)</th><th rowspan="2">ระดับ</th></tr>`;
+  const head2 = `<tr>${cols.map(({ t }) => `<th class="task-h" data-act="task" data-v="${t.id}" title="${esc(t.name)} · คลิกเพื่อแก้ไข"><span class="tn">${esc(t.name)}</span><span class="sub">${t.auto === 'bonus' ? '<span class="bonus">จาก Live Class</span>' : (t.bonus ? '<span class="bonus">+พิเศษ</span> ' : '') + 'เต็ม ' + esc(t.full)}${t.due ? '<br>ส่ง ' + esc(thaiDate(t.due).split(' ').slice(0, 2).join(' ')) : ''}</span></th>`).join('')}${units.map(u => `<th>${unitTag(c, u, 'short')}<span class="sub">${esc(u.weight)}</span></th>`).join('')}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th></tr>`;
   const rows = studs.map((s, r) => {
     const cells = cols.map(({ t }, ci) => {
       const v = (c.scores[t.id] || {})[s.id];
@@ -238,15 +238,15 @@ function viewStructure(c) {
   <div class="card">
     <div class="card-h"><h2>หน่วยการเรียนรู้และน้ำหนักคะแนน</h2>
       <span class="chip ${midSum === Number(c.ratio.mid) ? 'ok' : 'warn'}">ระหว่างเรียน ${midSum}/${esc(c.ratio.mid)}</span>${midSum !== Number(c.ratio.mid) && mids.length ? `<button class="btn sm" data-act="fitUnits" title="คงสัดส่วนระหว่างหน่วยไว้เหมือนเดิม">${ico('bolt')} ปรับให้รวม ${esc(c.ratio.mid)} อัตโนมัติ</button>` : ''}
-      <button class="btn" data-act="addUnit">${ico('plus')} เพิ่มหน่วย</button></div>
+      <button class="btn" data-act="addUnit">${ico('plus')} เพิ่มหน่วย</button>${units.some(u => u.isMid) ? '' : `<button class="btn" data-act="addMid">${ico('plus')} เพิ่มสอบกลาง${lv === 'ป' ? 'ปี' : 'ภาค'}</button>`}</div>
     <div class="tbl-wrap flat"><table class="tbl stack unit-tbl">
       <thead><tr><th>หน่วยที่</th><th class="l">ชื่อหน่วยการเรียนรู้</th><th class="l">มาตรฐาน/ตัวชี้วัด</th><th>ชม.</th><th>คะแนน</th><th title="จำนวนช่องคะแนนย่อยในหน้า 3.1">ช่องย่อย</th><th title="เกณฑ์ผ่านของหน่วย">ผ่าน %</th><th></th></tr></thead>
       <tbody>${units.map((u, i) => `<tr>
-        <td class="n st-no" data-label="หน่วยที่">${u.isFinal ? 'ปลายภาค' : 'หน่วย ' + (i + 1)}</td>
+        <td class="n st-no" data-label="หน่วยที่">${unitTag(c, u, 'long')}</td>
         <td class="wide" data-label="ชื่อหน่วยการเรียนรู้"><input class="inp t" data-u="${u.id}|name" value="${esc(u.name)}" style="min-width:200px"></td>
         <td class="wide" data-label="มาตรฐาน/ตัวชี้วัด"><textarea class="inp t" data-u="${u.id}|indicators" rows="1" style="min-width:200px;min-height:34px">${esc(u.indicators)}</textarea></td>
         <td data-label="ชั่วโมง"><input class="cell w" data-u="${u.id}|hours" value="${esc(u.hours)}" inputmode="decimal"></td>
-        <td data-label="คะแนน">${u.isFinal ? `<b class="num" style="padding:0 10px">${esc(c.ratio.final)}</b>` : `<input class="cell w" data-u="${u.id}|weight" value="${esc(u.weight)}" inputmode="decimal">`}</td>
+        <td class="c" data-label="คะแนน">${u.isFinal ? `<span class="cell-fixed" title="เท่ากับสัดส่วนปลาย${levelOfCourse(c) === 'ป' ? 'ปี' : 'ภาค'} แก้ได้ที่ช่องสัดส่วนด้านบน">${esc(c.ratio.final)}</span>` : `<input class="cell w" data-u="${u.id}|weight" value="${esc(u.weight)}" inputmode="decimal">`}</td>
         <td data-label="ช่องย่อย">${u.isFinal ? '' : `<input class="cell w" data-u="${u.id}|slots" value="${u.slots || ''}" placeholder="${Math.min(Calc.unitTasks(c, u.id).length, 10) || 1}" inputmode="numeric">`}</td>
         <td data-label="ผ่าน %"><input class="cell w" data-u="${u.id}|minPct" value="${u.minPct ?? ''}" placeholder="${esc(S.settings.minPct)}" inputmode="decimal"></td>
         <td class="st-del" style="white-space:nowrap">${u.isFinal ? '' : `<button class="btn sm ghost" data-act="unitUp" data-v="${u.id}" aria-label="เลื่อนขึ้น">↑</button><button class="btn sm ghost danger" data-act="delUnit" data-v="${u.id}" aria-label="ลบหน่วย">${ico('trash')}</button>`}</td>
@@ -378,7 +378,7 @@ function viewResults(c) {
     <span class="note" style="margin-left:auto">ร = ยังมีงานค้าง (กรอก 0 ถ้าไม่ส่งจริง) · มส = เวลาเรียนไม่ถึง ${esc(st.minAtt)}%</span>
     <button class="btn sm" data-act="xlsx">${ico('download')} ส่งออก Excel</button>
   </div></div>
-  ${studs.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th class="sticky-l">เลขที่</th><th class="sticky-l2">ชื่อ - สกุล</th>${units.map((u, i) => `<th>${u.isFinal ? 'ปลาย' : 'น.' + (i + 1)}<span class="sub">${esc(u.weight)}</span></th>`).join('')}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th><th>ระดับ</th><th class="l">สถานะ</th><th>ต้องได้ปลายภาค</th><th>ผลหลังแก้</th><th class="l">หมายเหตุการแก้</th></tr></thead><tbody>
+  ${studs.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th class="sticky-l">เลขที่</th><th class="sticky-l2">ชื่อ - สกุล</th>${units.map(u => `<th>${unitTag(c, u, 'short')}<span class="sub">${esc(u.weight)}</span></th>`).join('')}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th><th>ระดับ</th><th class="l">สถานะ</th><th>ต้องได้ปลายภาค</th><th>ผลหลังแก้</th><th class="l">หมายเหตุการแก้</th></tr></thead><tbody>
   ${studs.map(s => {
     const r = Calc.studentResult(c, s.id, st);
     const need = Calc.neededFinal(c, s.id, S.target, st);
