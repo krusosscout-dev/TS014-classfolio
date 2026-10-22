@@ -158,7 +158,7 @@ function teachPrint(c) {
   $('#printRoot').innerHTML = `<section class="sheet"><div class="run"><span>บันทึกการสอน · ${esc(c.code)} ${esc(c.name)} · ชั้น ${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))}</span><span>${esc(c.teacher || '')}</span></div><h2 class="doc">บันทึกการสอน</h2>
     <table class="pt"><thead><tr><th style="width:30mm">วันที่</th><th style="width:10mm">คาบ</th><th>หน่วย / เรื่องที่สอน</th><th style="width:16mm">มาเรียน</th><th style="width:34mm">งานที่มอบ</th><th style="width:45mm">บันทึกหลังสอน</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="c">ยังไม่มีบันทึก</td></tr>'}</tbody></table>
     <div class="signs"><div class="sign" style="grid-column:2"><div class="ln">ลงชื่อ ......................................................</div><div>( ${esc(c.teacher || '......................................................')} )</div><div>ครูผู้สอน</div></div></div></section>`;
-  printNow();
+  printNow('บันทึกการสอน ' + courseFileTag(c));
 }
 
 /* ---------------- Class Tools ---------------- */

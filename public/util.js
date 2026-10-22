@@ -128,6 +128,14 @@ function fitUnitWeights(c) {
   Calc.distributeInt(raw, target).forEach((v, i) => mids[i].weight = v);
   const fu = (c.units || []).find(u => u.isFinal); if (fu) fu.weight = Number(c.ratio.final) || 0;
 }
+/* ชื่อไฟล์ที่ดาวน์โหลด: ใช้ได้ทุกระบบปฏิบัติการ (ตัดอักขระต้องห้าม / \ : * ? " < > |) */
+function safeFile(s) { return String(s || '').replace(/[\/\\:*?"<>|]+/g, '-').replace(/\s+/g, ' ').replace(/^[\s.-]+|[\s.-]+$/g, '').slice(0, 120) || 'ClassFolio'; }
+/* ส่วนท้ายชื่อไฟล์ของรายวิชา เช่น "ส21101 สังคมศึกษา 1 ม.1-1 ภาค1-2569" */
+function courseFileTag(c) {
+  const t = levelOfCourse(c) === 'ป' || c.term === 'ปี' ? 'ปี' + c.year : 'ภาค' + c.term + '-' + c.year;
+  return [c.code, c.name, (c.grade || '') + (c.room ? '-' + c.room : ''), t].filter(Boolean).join(' ');
+}
+function thaiDateFile(d) { d = d || new Date(); return String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + (d.getFullYear() + 543); }
 function levelOfCourse(c) { return c.level && c.level !== 'auto' ? c.level : Calc.levelOf(c.code); }
 function termLabel(c) { return levelOfCourse(c) === 'ป' || c.term === 'ปี' ? 'ปีการศึกษา ' + c.year : 'ภาคเรียนที่ ' + c.term + '/' + c.year; }
 function studentName(s) { return [s.prefix, s.first].filter(Boolean).join('') + (s.last ? ' ' + s.last : ''); }

@@ -53,7 +53,7 @@ function excelSheets(c, st) {
 }
 
 function excelName(c) {
-  return `${(c.code || 'วิชา')} ${c.grade || ''}-${c.room || ''} ${termLabel(c).replace(/[\/\\:]/g, '-')}.xlsx`.replace(/\s+/g, ' ').trim();
+  return safeFile('คะแนน ' + courseFileTag(c)) + '.xlsx';
 }
 
 function exportExcel(c) {

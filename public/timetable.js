@@ -196,7 +196,7 @@ function ttPrint() {
     <table class="pt tt-print"><thead><tr><th style="width:24mm">วัน / เวลา</th>${cols.map(c => c.lunch ? '<th style="width:10mm"></th>' : `<th>คาบ ${c.i + 1}<br>${esc(c.p.s)}–${esc(c.p.e)}</th>`).join('')}</tr></thead>
     <tbody>${ttDays().map(([d, n], di, arr) => `<tr><th>${n}</th>${cols.map(c => c.lunch ? (di === 0 ? `<td rowspan="${arr.length}" class="c"><div class="vt">พักกลางวัน</div></td>` : '') : `<td class="c">${cellTxt(d, c.i)}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`;
   $('#printRoot').innerHTML = html;
-  printNow();
+  printNow(mode === 'mine' ? 'ตารางสอน ' + (S.settings.teacher || '') : 'ตารางเรียน ' + String(S.ttRoom || '').replace('/', '-'));
 }
 
 function todayCard() {

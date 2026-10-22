@@ -261,10 +261,16 @@ function localBanner() {
 }
 
 /* เริ่มพิมพ์: ถ้าแผ่นแรกเป็นแนวนอน ให้ทั้งเอกสารเริ่มด้วยหน้าแนวนอน (กันหน้าว่างแผ่นแรก) */
-function printNow() {
+/* name = ชื่อไฟล์ตอน "บันทึกเป็น PDF" (เบราว์เซอร์ใช้ชื่อหน้าเว็บเป็นชื่อไฟล์) */
+function printNow(name) {
   const root = $('#printRoot'), first = root && root.querySelector('.sheet');
   if (root) root.style.page = first && first.classList.contains('land') ? 'land' : 'auto';
-  setTimeout(() => window.print(), 60);
+  const old = 'ClassFolio';
+  if (name) document.title = safeFile(name);
+  let done = false;
+  const back = () => { if (done) return; done = true; document.title = old; window.removeEventListener('afterprint', back); };
+  window.addEventListener('afterprint', back);
+  setTimeout(() => { window.print(); setTimeout(back, 1500); }, 60);
 }
 function fitSheets() {
   const wrap = $('#sheets'); if (!wrap) return;
@@ -369,7 +375,7 @@ const ACT = {
   switcher() { S.switcher = !S.switcher; render(); },
   pickCourse() { coursePicker(); },
   more() { moreSheet(); },
-  printAtt() { const c = cur(); $('#printRoot').innerHTML = Print.render(c, S.settings, { pages: ['4'], bw: S.printBW, wm: S.watermark }); log('พิมพ์บันทึกเวลาเรียน'); touch(c); printNow(); },
+  printAtt() { const c = cur(); $('#printRoot').innerHTML = Print.render(c, S.settings, { pages: ['4'], bw: S.printBW, wm: S.watermark }); log('พิมพ์บันทึกเวลาเรียน'); touch(c); printNow('บันทึกเวลาเรียน ' + courseFileTag(c)); },
   install() { installApp(); },
   xlsx() { exportExcel(cur()); },
   timetable() { S.view = 'timetable'; render(); window.scrollTo(0, 0); },
@@ -460,7 +466,8 @@ const ACT = {
     const c = cur();
     $('#printRoot').innerHTML = Print.render(c, S.settings, { pages: S.printPages || PAGES.map(p => p[0]), bw: S.printBW, wm: S.watermark });
     log('พิมพ์ ปพ.5'); touch(c);
-    printNow();
+    const pp = S.printPages || PAGES.map(p => p[0]), all = pp.length === PAGES.length;
+    printNow('ปพ.5 ' + courseFileTag(c) + (all ? '' : ' (หน้า ' + pp.join(',') + ')'));
   },
   addSigner() { if (S.settings.signers.length < 6) { S.settings.signers.splice(S.settings.signers.length - 1, 0, { role: '', name: '' }); touchSettings(); render(); } },
   delSigner(v) { S.settings.signers.splice(Number(v), 1); touchSettings(); render(); },
@@ -482,7 +489,7 @@ const ACT = {
     const data = { app: 'samutwadphon', version: 1, exportedAt: new Date().toISOString(), settings: S.settings, courses: S.courses };
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'สมุดวัดผล-สำรอง-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();
+    a.download = 'ClassFolio สำรองข้อมูล ' + thaiDateFile() + '.json'; document.body.appendChild(a); a.click(); a.remove();
     toast('ดาวน์โหลดไฟล์สำรองแล้ว');
   }
 };
