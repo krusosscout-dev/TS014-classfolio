@@ -21,7 +21,7 @@ const Print = (function () {
     return `<div class="wm"><span>${esc(t)}</span></div>`;
   }
   function sheet(c, st, o, key, body, land, part) {
-    const run = `<div class="run"><span>ปพ.5 · ${esc(c.code)} ${esc(c.name)} · ชั้น ${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))}</span><span>หน้า ${key}${part ? ' (' + part + ')' : ''}</span></div>`;
+    const run = `<div class="run"><span>ปพ.5 · ${esc(c.code)} ${esc(c.name)} · ชั้น ${esc(classOf(c))} · ${esc(termLabel(c))}</span><span>หน้า ${key}${part ? ' (' + part + ')' : ''}</span></div>`;
     return `<section class="sheet${land ? ' land' : ''}${o.bw ? ' bw' : ''}">${wm(st, o)}${key === '1' ? '' : run}${body}</section>`;
   }
   function studentRows(c) { return Calc.activeStudents(c); }
@@ -45,7 +45,7 @@ const Print = (function () {
       <div class="cen" style="font-size:18pt">${levelText(c)}</div>
       <div class="cen" style="font-size:18pt"><b>${esc(st.school)}</b> · ${esc(st.area)}</div>
       <table class="info-t">
-        <tr><th>${lv === 'ป' ? 'ปีการศึกษา' : 'ภาคเรียนที่'}</th><td>${lv === 'ป' ? esc(c.year) : esc(c.term) + '/' + esc(c.year)}</td><th>ชั้น</th><td>${esc(c.grade)}/${esc(c.room)}</td></tr>
+        <tr><th>${lv === 'ป' ? 'ปีการศึกษา' : 'ภาคเรียนที่'}</th><td>${lv === 'ป' ? esc(c.year) : esc(c.term) + '/' + esc(c.year)}</td><th>ชั้น</th><td>${esc(classOf(c))}</td></tr>
         <tr><th>กลุ่มสาระการเรียนรู้</th><td colspan="3">${esc(c.group)}</td></tr>
         <tr><th>รหัสวิชา</th><td>${esc(c.code)}</td><th>รายวิชา</th><td>${esc(c.name)} (${esc(c.type)})</td></tr>
         <tr><th>เวลาเรียน</th><td>${esc(c.hours)} ชั่วโมง${lv === 'ป' ? '/ปี' : ''}</td><th>${lv === 'ป' ? 'ประเภท' : 'หน่วยกิต'}</th><td>${lv === 'ป' ? 'รายวิชา' + esc(c.type) : esc(c.credits) + ' หน่วยกิต'}</td></tr>
@@ -266,7 +266,7 @@ const Print = (function () {
         <tr><td>เวลาเรียนขั้นต่ำ</td><td>ไม่ต่ำกว่าร้อยละ ${esc(st.minAtt || 80)} ของเวลาเรียนทั้งหมด</td></tr>
         <tr><td>อัตราส่วนคะแนน ระหว่างเรียน : ปลาย${levelOfCourse(c) === 'ป' ? 'ปี' : 'ภาค'}</td><td>${esc(c.ratio.mid)} : ${esc(c.ratio.final)}</td></tr>
         <tr><td>สัญลักษณ์บันทึกเวลาเรียน (หน้า 4)</td><td>${CHECK.replace('class="ck"', 'class="ck" style="display:inline-block;vertical-align:-.5mm"')} มาเรียน &nbsp; ข ขาด &nbsp; ล ลา &nbsp; ป ป่วย &nbsp; ส สาย &nbsp; น หนี</td></tr></tbody></table>
-      <div class="back-foot">${logo}<b>${esc(st.school)}</b><span>${esc(st.area)}</span><small>${esc(c.code)} ${esc(c.name)} · ชั้น ${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))}</small></div>`;
+      <div class="back-foot">${logo}<b>${esc(st.school)}</b><span>${esc(st.area)}</span><small>${esc(c.code)} ${esc(c.name)} · ชั้น ${esc(classOf(c))} · ${esc(termLabel(c))}</small></div>`;
     return sheet(c, st, o, 'B', body).replace('<span>หน้า B</span>', '<span>ปกหลัง</span>');
   }
 

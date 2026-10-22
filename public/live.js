@@ -83,7 +83,7 @@ function viewLive() {
   return `
   <div class="card bar live-head">
     <div class="live-ctl">
-      <label class="field"><span>รายวิชา</span><select class="inp" id="liveCourse">${activeCourses().map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)} · ${esc(x.grade)}/${esc(x.room)}</option>`).join('')}</select></label>
+      <label class="field"><span>รายวิชา</span><select class="inp" id="liveCourse">${activeCourses().map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)} · ${esc(classOf(x))}</option>`).join('')}</select></label>
       <label class="field"><span>วันที่</span><input class="inp" type="date" id="liveDate" value="${esc(L.date)}"></label>
       <label class="field"><span>คาบ</span><select class="inp" id="livePeriod">${T.periods.map((p, i) => `<option value="${i + 1}" ${i + 1 === Number(L.period) ? 'selected' : ''}>คาบ ${i + 1} · ${esc(p.s)}–${esc(p.e)}</option>`).join('')}</select></label>
     </div>
@@ -155,7 +155,7 @@ function teachPrint(c) {
   const n = Calc.activeStudents(c).length;
   const rows = ses.map(x => { const u = c.units.find(z => z.id === x.unit), cnt = sessionSummary(c, x), ab = Calc.ABSENT_STATUS.reduce((a, k) => a + (cnt[k] || 0), 0); const tasks = (x.tasks || []).map(id => (c.tasks.find(t => t.id === id) || {}).name).filter(Boolean).join(', ');
     return `<tr><td class="c">${esc(thaiDate(x.date))}</td><td class="c">${x.period}</td><td>${esc(u ? u.name : '')}${x.topic ? '<br>' + esc(x.topic) : ''}</td><td class="c">${n - ab}/${n}</td><td>${esc(tasks)}</td><td>${esc(x.note || '')}</td></tr>`; }).join('');
-  $('#printRoot').innerHTML = `<section class="sheet"><div class="run"><span>บันทึกการสอน · ${esc(c.code)} ${esc(c.name)} · ชั้น ${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))}</span><span>${esc(c.teacher || '')}</span></div><h2 class="doc">บันทึกการสอน</h2>
+  $('#printRoot').innerHTML = `<section class="sheet"><div class="run"><span>บันทึกการสอน · ${esc(c.code)} ${esc(c.name)} · ชั้น ${esc(classOf(c))} · ${esc(termLabel(c))}</span><span>${esc(c.teacher || '')}</span></div><h2 class="doc">บันทึกการสอน</h2>
     <table class="pt"><thead><tr><th style="width:30mm">วันที่</th><th style="width:10mm">คาบ</th><th>หน่วย / เรื่องที่สอน</th><th style="width:16mm">มาเรียน</th><th style="width:34mm">งานที่มอบ</th><th style="width:45mm">บันทึกหลังสอน</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="c">ยังไม่มีบันทึก</td></tr>'}</tbody></table>
     <div class="signs"><div class="sign" style="grid-column:2"><div class="ln">ลงชื่อ ......................................................</div><div>( ${esc(c.teacher || '......................................................')} )</div><div>ครูผู้สอน</div></div></div></section>`;
   printNow('บันทึกการสอน ' + courseFileTag(c));
@@ -174,7 +174,7 @@ function viewTools() {
   const studs = Calc.activeStudents(c), absent = todayAbsent(c);
   const head = `<div class="card bar"><div class="row">
     <div class="seg"><button data-act="toolsMode" data-v="random" class="${mode === 'random' ? 'on' : ''}">${ico('target')} สุ่มชื่อ</button><button data-act="toolsMode" data-v="group" class="${mode === 'group' ? 'on' : ''}">${ico('users')} จับกลุ่ม</button></div>
-    <select class="inp" id="toolsCourse" style="width:auto;max-width:100%">${activeCourses().map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)} · ${esc(x.grade)}/${esc(x.room)}</option>`).join('')}</select>
+    <select class="inp" id="toolsCourse" style="width:auto;max-width:100%">${activeCourses().map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)} · ${esc(classOf(x))}</option>`).join('')}</select>
     <button class="btn sm" data-act="toolsPresent" style="margin-left:auto">${ico('grid')} เต็มจอ</button>
   </div>${absent.size ? `<p class="note" style="margin-top:8px">วันนี้ขาด ${absent.size} คน (จาก Live Class) · ระบบข้ามให้เมื่อเลือก "ข้ามคนที่ขาดวันนี้"</p>` : ''}</div>`;
   if (mode === 'random') {
@@ -248,7 +248,7 @@ function dueCard() {
   }));
   items.sort((a, b) => a.t.due.localeCompare(b.t.due));
   return `<div class="card"><div class="card-h"><h3>งานใกล้ถึงกำหนดส่ง</h3><span class="note">7 วันข้างหน้า และที่เลยกำหนด</span></div>
-    ${items.length ? `<div class="today">${items.slice(0, 6).map(x => { const late = x.t.due < today; return `<button class="today-row" data-hue="${late ? 'rose' : 'amber'}" data-act="go" data-v="${x.c.id}|book"><span class="t">${new Date(x.t.due).getDate()}<small>${esc(thaiDate(x.t.due).split(' ')[1])}</small></span><span class="bar"></span><span><b>${esc(x.t.name)}</b><small>${esc(x.c.code)} ${esc(x.c.grade)}/${esc(x.c.room)}${late ? ' · เลยกำหนด' : ''}</small></span><span class="chip ${x.miss ? 'warn' : 'ok'}">${x.miss ? 'ยังไม่ส่ง ' + x.miss : 'ส่งครบ'}</span></button>`; }).join('')}</div>` : '<p class="note">ไม่มีงานที่ใกล้ถึงกำหนด · มอบงานพร้อมวันส่งได้ใน Live Class</p>'}</div>`;
+    ${items.length ? `<div class="today">${items.slice(0, 6).map(x => { const late = x.t.due < today; return `<button class="today-row" data-hue="${late ? 'rose' : 'amber'}" data-act="go" data-v="${x.c.id}|book"><span class="t">${new Date(x.t.due).getDate()}<small>${esc(thaiDate(x.t.due).split(' ')[1])}</small></span><span class="bar"></span><span><b>${esc(x.t.name)}</b><small>${esc(x.c.code)} ${esc(classOf(x.c))}${late ? ' · เลยกำหนด' : ''}</small></span><span class="chip ${x.miss ? 'warn' : 'ok'}">${x.miss ? 'ยังไม่ส่ง ' + x.miss : 'ส่งครบ'}</span></button>`; }).join('')}</div>` : '<p class="note">ไม่มีงานที่ใกล้ถึงกำหนด · มอบงานพร้อมวันส่งได้ใน Live Class</p>'}</div>`;
 }
 
 /* ---------------- คำสั่ง ---------------- */

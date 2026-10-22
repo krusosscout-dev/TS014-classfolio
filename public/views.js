@@ -74,7 +74,7 @@ function viewHome() {
     studs += sm.n; pend += p; if (done === pg.length) ready++;
     const color = levelOfCourse(c) === 'ป' ? 'var(--h-teal)' : 'var(--h-indigo)';
     return `<article class="ccard ${lvClass(c)}">
-      <button class="ccard-top" data-act="go" data-v="${c.id}|overview"><b>${esc(c.code)} ${esc(c.name)}</b><small>ชั้น ${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))}${c.demo ? ' · ตัวอย่าง' : ''}</small><span class="lvtag">ปพ.5 ${levelOfCourse(c)}</span></button>
+      <button class="ccard-top" data-act="go" data-v="${c.id}|overview"><b>${esc(c.code)} ${esc(c.name)}</b><small>ชั้น ${esc(classOf(c))} · ${esc(termLabel(c))}${c.demo ? ' · ตัวอย่าง' : ''}</small><span class="lvtag">ปพ.5 ${levelOfCourse(c)}</span></button>
       <div class="ccard-body">${ring(done, pg.length, color)}<div class="mini"><div><b>${sm.n}</b><span>นักเรียน</span></div><div><b>${sm.meanTotal === null ? '–' : Math.round(sm.meanTotal)}</b><span>เฉลี่ย</span></div><div><b style="color:${p ? 'var(--warn)' : 'var(--ok)'}">${p}</b><span>งานค้าง</span></div></div></div>
       <div class="ccard-foot"><button data-act="go" data-v="${c.id}|book">${ico('book')} คะแนน</button><button data-act="go" data-v="${c.id}|results">${ico('check')} ตัดเกรด</button><button data-act="go" data-v="${c.id}|print">${ico('print')} ปพ.5</button></div>
     </article>`;
@@ -105,7 +105,7 @@ function viewHome() {
   ${archiveCard()}
   <div class="grid2">
     <div class="card"><div class="card-h"><h3>นักเรียนที่ควรติดตามด่วน</h3><span class="chip ${risks.length ? 'bad' : 'ok'}">${risks.length} คน</span></div>
-      ${risks.length ? `<div class="risk">${risks.slice(0, 6).map(x => `<div class="risk-row"><span class="no">${x.s.no}</span><b>${esc(studentName(x.s))} <span class="muted small">· ${esc(x.c.code)} ${esc(x.c.grade)}/${esc(x.c.room)}</span></b><div class="chips">${x.why.map(w => `<span class="chip ${w[0]}">${esc(w[1])}</span>`).join('')}</div></div>`).join('')}</div>` : '<div class="okbox">ไม่มีนักเรียนที่ต้องติดตามด่วน</div>'}
+      ${risks.length ? `<div class="risk">${risks.slice(0, 6).map(x => `<div class="risk-row"><span class="no">${x.s.no}</span><b>${esc(studentName(x.s))} <span class="muted small">· ${esc(x.c.code)} ${esc(classOf(x.c))}</span></b><div class="chips">${x.why.map(w => `<span class="chip ${w[0]}">${esc(w[1])}</span>`).join('')}</div></div>`).join('')}</div>` : '<div class="okbox">ไม่มีนักเรียนที่ต้องติดตามด่วน</div>'}
     </div>
     <div class="card"><div class="card-h"><h3>ทำอะไรไปล่าสุด</h3></div>
       ${feed.length ? `<div class="feed">${feed.slice(0, 8).map(x => `<div class="feed-row ${lvClass(x.c)}"><span class="dotc"></span><span>${esc(x.l.text)} <span class="muted">· ${esc(x.c.code)}</span></span><span class="note">${esc(timeAgo(x.l.t))}</span></div>`).join('')}</div>` : '<p class="note">ยังไม่มีความเคลื่อนไหว</p>'}
@@ -132,8 +132,12 @@ function viewOverview(c) {
     ${statTile('มีงานค้าง', pending, 'คน', 'alert', 'amber')}
   </div>
   <div class="card">
-    <div class="card-h"><h3>รายการตรวจความครบถ้วนทีละหน้า</h3><span class="chip ${done === pages.length ? 'ok' : 'warn'}">${done === pages.length ? 'ครบแล้ว' : 'ยังไม่ครบ ' + (pages.length - done) + ' หน้า'}</span></div>
-    <div class="board">${pages.map(p => `<button class="page-tile ${p.ok ? 'ok' : 'todo'}" data-act="${p.tab === 'settings' ? 'settings' : 'tab'}" data-v="${p.tab}"><span class="pn">หน้า ${p.key}</span><b>${p.name}</b><span class="st">${p.ok ? ico('check') + ' ครบแล้ว' : esc(p.hint)}</span></button>`).join('')}</div>
+    <div class="card-h"><h3>รายการตรวจความครบถ้วนทีละหน้า</h3><span class="chip ${done === pages.length ? 'ok' : 'warn'}">${done === pages.length ? 'ครบทุกหน้า' : 'ครบ ' + done + '/' + pages.length + ' · เหลือ ' + (pages.length - done) + ' หน้า'}</span></div>
+    <div class="pt-bar" aria-hidden="true">${pages.map(p => `<i class="${p.ok ? 'ok' : ''}" title="หน้า ${p.key}"></i>`).join('')}</div>
+    <div class="board">${pages.map(p => `<button class="page-tile ${p.ok ? 'is-ok' : 'is-need'}" data-act="${p.tab === 'settings' ? 'settings' : 'tab'}" data-v="${p.tab}" aria-label="หน้า ${p.key} ${esc(p.name)} ${p.ok ? 'ครบแล้ว' : esc(p.hint)}">
+      <span class="pt-ic">${p.ok ? ico('check') : esc(p.key)}</span>
+      <span class="pt-tx"><small>หน้า ${p.key}</small><b>${p.name}</b><span class="st">${p.ok ? 'ครบแล้ว' : esc(p.hint)}</span></span>
+      ${p.ok ? '' : `<span class="pt-go">${ico('chev')}</span>`}</button>`).join('')}</div>
   </div>
   <div class="grid2">
     <div class="card"><div class="card-h"><h3>การกระจายระดับผลการเรียน</h3></div>${distHtml(sm)}<p class="note" style="margin-top:10px">ร = ยังมีงานค้าง · มส = เวลาเรียนไม่ถึง ${esc(st.minAtt)}%</p></div>
@@ -214,7 +218,7 @@ function viewStructure(c) {
       ${fld('code', 'รหัสวิชา')}${fld('name', 'ชื่อวิชา')}
       <label class="field"><span>กลุ่มสาระการเรียนรู้</span><select class="inp" data-f="group">${GROUPS.concat(['กิจกรรมพัฒนาผู้เรียน']).map(g => `<option ${g === c.group ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
       <label class="field"><span>ประเภทวิชา</span><select class="inp" data-f="type">${['พื้นฐาน', 'เพิ่มเติม'].map(g => `<option ${g === c.type ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
-      ${fld('grade', 'ชั้น (เช่น ม.1, ป.6)')}${fld('room', 'ห้อง')}${fld('year', 'ปีการศึกษา', 'number')}
+      ${fld('grade', 'ชั้น (เช่น ม.1, ป.6)')}${fld('room', 'ห้อง (เว้นว่างได้ ถ้ามีห้องเดียว)', 'text', 'placeholder="เช่น 1"')}${fld('year', 'ปีการศึกษา', 'number')}
       <label class="field"><span>ภาคเรียน</span><select class="inp" data-f="term">${[['1', 'ภาคเรียนที่ 1'], ['2', 'ภาคเรียนที่ 2'], ['ปี', 'ทั้งปี (ประถม)']].map(([v, l]) => `<option value="${v}" ${v === String(c.term) ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       ${fld('hours', 'เวลาเรียน (ชั่วโมง)', 'number', 'min="0"')}${lv === 'ต' ? fld('credits', 'หน่วยกิต', 'number', 'step="0.5" min="0"') : ''}
       ${fld('teacher', 'ครูผู้สอน')}

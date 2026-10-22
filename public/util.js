@@ -136,6 +136,8 @@ function courseFileTag(c) {
   return [c.code, c.name, (c.grade || '') + (c.room ? '-' + c.room : ''), t].filter(Boolean).join(' ');
 }
 function thaiDateFile(d) { d = d || new Date(); return String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + (d.getFullYear() + 543); }
+/* ชั้น/ห้อง เช่น "ม.1/2" · ถ้าไม่ใส่ห้อง (โรงเรียนมีห้องเดียว) แสดงเฉพาะชั้น "ป.4" */
+function classOf(c) { const g = String(c && c.grade || '').trim(), r = String(c && c.room != null ? c.room : '').trim(); return r ? g + '/' + r : g; }
 function levelOfCourse(c) { return c.level && c.level !== 'auto' ? c.level : Calc.levelOf(c.code); }
 function termLabel(c) { return levelOfCourse(c) === 'ป' || c.term === 'ปี' ? 'ปีการศึกษา ' + c.year : 'ภาคเรียนที่ ' + c.term + '/' + c.year; }
 function studentName(s) { return [s.prefix, s.first].filter(Boolean).join('') + (s.last ? ' ' + s.last : ''); }

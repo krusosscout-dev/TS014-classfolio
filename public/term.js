@@ -14,7 +14,7 @@ function newTermDialog() {
   const rows = list.map(c => {
     const t = nextTerm(c), nx = catalogNext(c.code) || { code: c.code, name: c.name };
     return `<div class="nt-row" data-cid="${c.id}">
-      <label class="nt-pick"><input type="checkbox" data-nt="on" checked><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))} → <b>${esc(termText(t, c))}</b></small></span></label>
+      <label class="nt-pick"><input type="checkbox" data-nt="on" checked><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(termLabel(c))} → <b>${esc(termText(t, c))}</b></small></span></label>
       <div class="nt-fields">
         <label class="field"><span>รหัสวิชาใหม่</span><input class="inp" data-nt="code" value="${esc(nx.code)}"></label>
         <label class="field"><span>ชื่อวิชา</span><input class="inp" data-nt="name" value="${esc(nx.name)}"></label>
@@ -92,7 +92,7 @@ function archiveCard() {
   const groups = []; arc.forEach(c => { const k = termKey(c); let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k, label: termLabel(c), list: [] }); g.list.push(c); });
   return `<div class="card arc-card">
     <div class="card-h"><h3>${ico('book')} คลังภาคเรียนเก่า</h3><span class="chip">${arc.length} รายวิชา</span><button class="btn sm ghost" data-act="showArchive" aria-expanded="${open}" style="margin-left:auto">${open ? 'ซ่อน' : 'แสดง'}</button></div>
-    ${open ? groups.map(g => `<div class="arc-g"><div class="arc-h">${esc(g.label)}</div>${g.list.map(c => `<div class="arc-row ${lvClass(c)}"><span class="lv">${levelOfCourse(c)}</span><button class="arc-t" data-act="go" data-v="${c.id}|overview"><b>${esc(c.code)} ${esc(c.name)}</b><small>ชั้น ${esc(c.grade)}/${esc(c.room)} · ${Calc.activeStudents(c).length} คน</small></button><span class="arc-b"><button class="btn sm" data-act="go" data-v="${c.id}|print" title="ปพ.5">${ico('print')}<span class="arc-lbl"> ปพ.5</span></button><button class="btn sm" data-act="unarchive" data-v="${c.id}" title="นำกลับมาใช้งาน">${ico('undo')}<span class="arc-lbl"> นำกลับ</span></button></span></div>`).join('')}</div>`).join('') : '<p class="note">รายวิชาของภาคเรียนที่จบแล้ว เปิดดู พิมพ์ ปพ.5 และส่งออก Excel ได้ตลอด</p>'}
+    ${open ? groups.map(g => `<div class="arc-g"><div class="arc-h">${esc(g.label)}</div>${g.list.map(c => `<div class="arc-row ${lvClass(c)}"><span class="lv">${levelOfCourse(c)}</span><button class="arc-t" data-act="go" data-v="${c.id}|overview"><b>${esc(c.code)} ${esc(c.name)}</b><small>ชั้น ${esc(classOf(c))} · ${Calc.activeStudents(c).length} คน</small></button><span class="arc-b"><button class="btn sm" data-act="go" data-v="${c.id}|print" title="ปพ.5">${ico('print')}<span class="arc-lbl"> ปพ.5</span></button><button class="btn sm" data-act="unarchive" data-v="${c.id}" title="นำกลับมาใช้งาน">${ico('undo')}<span class="arc-lbl"> นำกลับ</span></button></span></div>`).join('')}</div>`).join('') : '<p class="note">รายวิชาของภาคเรียนที่จบแล้ว เปิดดู พิมพ์ ปพ.5 และส่งออก Excel ได้ตลอด</p>'}
   </div>`;
 }
 

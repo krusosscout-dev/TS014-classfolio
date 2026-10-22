@@ -193,8 +193,8 @@ function render() {
         ${navBtn('tools', '', 'Class Tools', 'dice', 'violet')}
       </div>
       <div class="side-label">รายวิชา</div>
-      ${c ? `<button class="switch ${lvClass(c)}" data-act="switcher" aria-expanded="${S.switcher}"><span class="lv">${levelOfCourse(c)}</span><span class="sw-t"><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))}</small></span>${ico('chev')}</button>` : `<button class="switch" data-act="newCourse"><span class="sw-t"><b>สร้างรายวิชา</b><small>ยังไม่มีรายวิชา</small></span>${ico('plus')}</button>`}
-      ${S.switcher ? `<div class="course-list">${sorted.map(x => `<button class="course-item ${lvClass(x)} ${x.id === S.cur ? 'on' : ''}" data-act="open" data-v="${x.id}"><span class="lv">${levelOfCourse(x)}</span><b>${esc(x.code)} ${esc(x.name)}</b><span>${esc(x.grade)}/${esc(x.room)} · ${esc(termLabel(x))}</span></button>`).join('')}<button class="course-item" data-act="newCourse" style="--lvc:rgba(255,255,255,.18)"><span class="lv">+</span><b>สร้างรายวิชา</b><span>หรือคัดลอกจากวิชาเดิม</span></button></div>` : ''}
+      ${c ? `<button class="switch ${lvClass(c)}" data-act="switcher" aria-expanded="${S.switcher}"><span class="lv">${levelOfCourse(c)}</span><span class="sw-t"><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(termLabel(c))}</small></span>${ico('chev')}</button>` : `<button class="switch" data-act="newCourse"><span class="sw-t"><b>สร้างรายวิชา</b><small>ยังไม่มีรายวิชา</small></span>${ico('plus')}</button>`}
+      ${S.switcher ? `<div class="course-list">${sorted.map(x => `<button class="course-item ${lvClass(x)} ${x.id === S.cur ? 'on' : ''}" data-act="open" data-v="${x.id}"><span class="lv">${levelOfCourse(x)}</span><b>${esc(x.code)} ${esc(x.name)}</b><span>${esc(classOf(x))} · ${esc(termLabel(x))}</span></button>`).join('')}<button class="course-item" data-act="newCourse" style="--lvc:rgba(255,255,255,.18)"><span class="lv">+</span><b>สร้างรายวิชา</b><span>หรือคัดลอกจากวิชาเดิม</span></button></div>` : ''}
       <div class="side-scroll">
         ${TABS.map(([k, n, ic, hue]) => navBtn('tab', k, n, ic, hue, k !== 'overview' ? todo[k] : 0)).join('')}
       </div>
@@ -207,7 +207,7 @@ function render() {
       <header class="topbar"><div class="tb-card">
         <span class="pageico" data-hue="${m.hue}">${ico(m.icon)}</span>
         <div class="title"><small>${esc(m.crumb)}</small><h1>${esc(m.title)}</h1></div>
-        ${c ? `<button class="course-pill ${lvClass(c)}" data-act="pickCourse" title="เปลี่ยนรายวิชา"><span class="lv">${levelOfCourse(c)}</span><span class="cp-t"><b>${esc(c.code)}</b><small>${esc(c.grade)}/${esc(c.room)}</small></span>${ico('chev')}</button>` : ''}
+        ${c ? `<button class="course-pill ${lvClass(c)}" data-act="pickCourse" title="เปลี่ยนรายวิชา"><span class="lv">${levelOfCourse(c)}</span><span class="cp-t"><b>${esc(c.code)}</b><small>${esc(classOf(c))}</small></span>${ico('chev')}</button>` : ''}
         <div class="top-actions">
           <button class="iconbtn" data-act="palette" title="ค้นหา (Ctrl+K)" aria-label="ค้นหา">${ico('search')}</button>
           ${c && ['course', 'live'].includes(S.view) ? `<button class="iconbtn hide-s" data-act="undo" title="เลิกทำ (Ctrl+Z)" aria-label="เลิกทำ">${ico('undo')}</button><button class="iconbtn hide-s" data-act="redo" title="ทำซ้ำ (Ctrl+Y)" aria-label="ทำซ้ำ">${ico('redo')}</button>` : ''}
@@ -235,7 +235,7 @@ function moreSheet() {
   const items = [['home', '', 'หน้าแรก', 'home', 'indigo'], ['live', '', 'Live Class', 'live', 'rose'], ['timetable', '', 'ตารางสอน', 'calendar', 'cyan'], ['tools', '', 'Class Tools', 'dice', 'violet']].concat(c ? TABS.map(([k, n, ic, hue]) => ['tab', k, n, ic, hue]) : []).concat([['settings', '', 'ตั้งค่า', 'settings', 'slate']]);
   const d = document.createElement('dialog'); d.className = 'dlg sheet-dlg';
   d.innerHTML = `<div class="dlg-h"><h2>เมนูทั้งหมด</h2><button class="btn ghost sm" data-x aria-label="ปิด">✕</button></div>
-    ${c ? `<button class="sheet-course ${lvClass(c)}" data-go="pick"><span class="lv">${levelOfCourse(c)}</span><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))} · แตะเพื่อเปลี่ยนวิชา</small></span>${ico('chev')}</button>` : ''}
+    ${c ? `<button class="sheet-course ${lvClass(c)}" data-go="pick"><span class="lv">${levelOfCourse(c)}</span><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(termLabel(c))} · แตะเพื่อเปลี่ยนวิชา</small></span>${ico('chev')}</button>` : ''}
     <div class="sheet-grid">${items.map(([a, v, n, ic, hue]) => { const t = a === 'tab' && v !== 'overview' ? todo[v] : a === 'settings' ? todo.settings : 0; return `<button data-hue="${hue}" data-go="${a}|${v}"><span class="chipico">${ico(ic)}</span><span>${n}</span>${t ? `<span class="todo">${t}</span>` : ''}</button>`; }).join('')}</div>
     ${isStandalone() ? '' : `<button class="sheet-course" data-go="install|" style="margin-bottom:10px"><span class="lv" style="--lvc:#7444dc">${ico('download')}</span><span><b>ติดตั้งเป็นแอป</b><small>มีไอคอนบนหน้าจอ เปิดเต็มจอ</small></span></button>`}
     <p class="note" style="padding:0 22px 18px"><span class="todo">1</span> = หน้า ปพ.5 ที่ยังไม่ครบ ยังขาดกี่หน้า</p>`;
@@ -496,7 +496,7 @@ const ACT = {
 Object.assign(ACT, LIVE_ACT, TERM_ACT);
 function coursePicker() {
   const list = activeCourses().sort((a, b) => (b.year - a.year) || thColl.compare(a.code, b.code)), arc = archivedCourses();
-  const d = dialog('เลือกรายวิชา', `<div style="display:grid;gap:6px">${list.map(x => `<button class="btn ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(x.grade)}/${esc(x.room)} · ${esc(termLabel(x))}</button>`).join('')}<button class="btn" data-pick="new">${ico('plus')} สร้างรายวิชา</button>${arc.length ? `<div class="side-label" style="color:var(--muted);margin-top:6px">คลังภาคเรียนเก่า</div>${arc.map(x => `<button class="btn ghost ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(x.grade)}/${esc(x.room)} · ${esc(termLabel(x))}</button>`).join('')}` : ''}</div>`, []);
+  const d = dialog('เลือกรายวิชา', `<div style="display:grid;gap:6px">${list.map(x => `<button class="btn ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(classOf(x))} · ${esc(termLabel(x))}</button>`).join('')}<button class="btn" data-pick="new">${ico('plus')} สร้างรายวิชา</button>${arc.length ? `<div class="side-label" style="color:var(--muted);margin-top:6px">คลังภาคเรียนเก่า</div>${arc.map(x => `<button class="btn ghost ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(classOf(x))} · ${esc(termLabel(x))}</button>`).join('')}` : ''}</div>`, []);
   d.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { d.close(); d.remove(); if (b.dataset.pick === 'new') newCourseDialog(); else ACT.open(b.dataset.pick); });
 }
 function renumberKeep(c) { Calc.activeStudents(c).forEach((s, i) => s.no = i + 1); }
@@ -541,7 +541,7 @@ function newCourseDialog() {
     <label class="field"><span>รหัสวิชา</span><input class="inp" id="nCode" placeholder="ส21101"></label>
     <label class="field"><span>ชื่อวิชา</span><input class="inp" id="nName" placeholder="สังคมศึกษา 1"></label>
     <label class="field"><span>ชั้น</span><input class="inp" id="nGrade" placeholder="ม.1"></label>
-    <label class="field"><span>ห้อง</span><input class="inp" id="nRoom" value="1"></label>
+    <label class="field"><span>ห้อง <small class="muted">(เว้นว่างได้ ถ้ามีห้องเดียว)</small></span><input class="inp" id="nRoom" value="" placeholder="เช่น 1"></label>
     <label class="field"><span>ปีการศึกษา</span><input class="inp" id="nYear" type="number" value="${new Date().getFullYear() + 543 - (new Date().getMonth() < 4 ? 1 : 0)}"></label>
     <label class="field"><span>ภาคเรียน</span><select class="inp" id="nTerm"><option value="1">1</option><option value="2">2</option><option value="ปี">ทั้งปี (ประถม)</option></select></label>
     <label class="field"><span>เวลาเรียน (ชม.)</span><input class="inp" id="nHours" type="number" value="40"></label>
@@ -549,7 +549,7 @@ function newCourseDialog() {
     <label class="field"><span id="nMidL">คะแนนระหว่างภาค</span><input class="inp" id="nMid" type="number" min="0" max="100" value="${esc(S.settings.ratioMid)}"></label>
     <label class="field"><span id="nFinL">คะแนนปลายภาค</span><input class="inp" id="nFin" type="number" min="0" max="100" value="${esc(S.settings.ratioFinal)}"></label>
   </div>
-  ${others.length ? `<label class="field"><span>คัดลอกจากรายวิชาเดิม (ไม่คัดลอกคะแนน)</span><select class="inp" id="nFrom"><option value="">ไม่คัดลอก</option>${others.map(o => `<option value="${o.id}">${esc(o.code)} ${esc(o.name)} · ${esc(o.grade)}/${esc(o.room)} · ${esc(termLabel(o))}</option>`).join('')}</select></label>
+  ${others.length ? `<label class="field"><span>คัดลอกจากรายวิชาเดิม (ไม่คัดลอกคะแนน)</span><select class="inp" id="nFrom"><option value="">ไม่คัดลอก</option>${others.map(o => `<option value="${o.id}">${esc(o.code)} ${esc(o.name)} · ${esc(classOf(o))} · ${esc(termLabel(o))}</option>`).join('')}</select></label>
   <div class="row small"><label class="row"><input type="checkbox" id="nCopyStu" checked> รายชื่อนักเรียน</label><label class="row"><input type="checkbox" id="nCopyStruct" checked> โครงสร้างและงาน</label><label class="row"><input type="checkbox" id="nCopyDesc" checked> คำอธิบายรายวิชา</label></div>` : ''}
   <p class="note">ตัวเลขตัวแรกของรหัสวิชา 1 = ประถม (ปพ.5 ป) 2–3 = มัธยม (ปพ.5 ต)</p>`;
   const nd = dialog('สร้างรายวิชา', body, [{ label: 'ยกเลิก', cls: 'ghost' }, {
@@ -661,7 +661,7 @@ function openPalette() {
   d.innerHTML = `<input id="palIn" placeholder="พิมพ์ชื่อวิชา เมนู หรือชื่อนักเรียน" autocomplete="off"><div class="pal-list" id="palList"></div>`;
   document.body.appendChild(d); d.showModal();
   const items = [];
-  S.courses.forEach(c => items.push({ label: c.code + ' ' + c.name, sub: c.grade + '/' + c.room + ' · ' + termLabel(c) + (c.archived ? ' · คลังเก่า' : ''), run: () => ACT.open(c.id) }));
+  S.courses.forEach(c => items.push({ label: c.code + ' ' + c.name, sub: classOf(c) + ' · ' + termLabel(c) + (c.archived ? ' · คลังเก่า' : ''), run: () => ACT.open(c.id) }));
   if (cur()) TABS.forEach(([k, n]) => items.push({ label: n, sub: 'เมนูของ ' + cur().code, run: () => ACT.tab(k) }));
   items.push({ label: 'Live Class', sub: 'เช็คชื่อ บันทึกการสอน คะแนนพิเศษ', run: ACT.live }, { label: 'Class Tools', sub: 'สุ่มชื่อ จับกลุ่ม', run: ACT.tools }, { label: 'ตารางสอน', sub: 'ตารางสอนและตารางเรียน', run: ACT.timetable }, { label: 'ตั้งค่า', sub: 'ทั้งระบบ', run: ACT.settings }, { label: 'สร้างรายวิชา', sub: 'คำสั่ง', run: ACT.newCourse }, { label: 'เริ่มภาคเรียนใหม่', sub: 'คำสั่ง · ย้ายวิชาเดิมเข้าคลัง', run: ACT.newTerm }, { label: 'สลับโหมดสว่าง/มืด', sub: 'คำสั่ง', run: ACT.cycleTheme });
   if (cur()) { items.push({ label: 'เพิ่มงานในสมุดคะแนน', sub: 'คำสั่ง', run: () => { ACT.tab('book'); taskDialog(null); } }); Calc.activeStudents(cur()).forEach(s => items.push({ label: studentName(s), sub: 'เลขที่ ' + s.no + ' · ดูในตัดเกรด', run: () => ACT.tab('results') })); }
@@ -766,7 +766,7 @@ document.addEventListener('change', e => {
     if (d.rem && d.rem.endsWith('|grade')) { log('บันทึกผลหลังแก้'); }
     S.pending = JSON.stringify(c);
   }
-  if (d.f && ['name', 'grade', 'room', 'year'].includes(d.f)) { const t = $('.topbar .title'); if (t && c) t.innerHTML = `<h1>${esc(c.code)} ${esc(c.name)}</h1><small>ชั้น ${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))} · ปพ.5 ${levelOfCourse(c)}</small>`; }
+  if (d.f && ['name', 'grade', 'room', 'year'].includes(d.f)) { const t = $('.topbar .title'); if (t && c) t.innerHTML = `<h1>${esc(c.code)} ${esc(c.name)}</h1><small>ชั้น ${esc(classOf(c))} · ${esc(termLabel(c))} · ปพ.5 ${levelOfCourse(c)}</small>`; }
   if (el.id === 'targetSel') { S.target = el.value; render(); }
   if (el.id === 'wmSel') { S.watermark = el.value; render(); }
   if (el.id === 'ttRoomSel') { S.ttRoom = el.value; render(); }

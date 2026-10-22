@@ -15,7 +15,7 @@ function ttDefault() {
 }
 function tt() { if (!S.settings.tt) S.settings.tt = ttDefault(); const T = S.settings.tt, D = ttDefault(); ['days', 'plan', 'hrsPerPeriod', 'weeksTerm', 'weeksYear'].forEach(k => { if (T[k] === undefined) T[k] = D[k]; }); return T; }
 function courseHue(c) { const i = activeCourses().indexOf(c); return TT_HUES[(i < 0 ? 0 : i) % TT_HUES.length]; }
-function roomOf(c) { return c.grade + '/' + c.room; }
+function roomOf(c) { return classOf(c); }
 function ttRooms() {
   const set = new Set(activeCourses().map(roomOf).concat(tt().extraRooms || []));
   return Array.from(set).sort((a, b) => thColl.compare(a, b));
