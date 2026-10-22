@@ -942,3 +942,23 @@ select.inp, .toolbar select { background-image: url("data:image/svg+xml,%3Csvg x
 .cat-name small { color: var(--muted); font-size: .74rem; }
 .cat-item .chip { flex: none; font-size: .7rem; }
 @media (max-width: 640px) { .cat-list { grid-template-columns: minmax(0, 1fr); } .cat-grades button { min-width: 0; padding: 5px 10px; } }
+
+/* ---------- ทะเบียนนักเรียน ---------- */
+.ros-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.ros-chip { display: grid; gap: 0; text-align: left; padding: 8px 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--h) 30%, var(--line)); background: color-mix(in srgb, var(--h) 8%, var(--panel)); color: var(--ink); cursor: pointer; font: inherit; min-width: 84px; transition: transform .12s; }
+.ros-chip b { font-size: 1rem; } .ros-chip small { color: var(--muted); font-size: .74rem; }
+.ros-chip:hover { transform: translateY(-1px); }
+.ros-chip.on { background: var(--h); border-color: var(--h); color: #fff; box-shadow: 0 8px 20px -10px var(--h); } .ros-chip.on small { color: rgba(255,255,255,.85); }
+.ros-use { display: grid; gap: 6px; margin: 0 0 14px; padding: 10px 12px; border-radius: 14px; background: var(--panel-2); }
+.ros-use > b { font-size: .82rem; color: var(--muted); }
+.ros-use-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ros-use-row > span:first-child { flex: 1; min-width: 180px; }
+.ros-grad summary { cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.ros-plan { display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.ros-plan-row { display: grid; grid-template-columns: 1fr auto 20px 1fr; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--panel-2); }
+.ros-plan-row span { color: var(--muted); font-size: .82rem; }
+.ros-plan-row .ico { transform: rotate(-90deg); color: var(--accent); }
+.ros-plan-row b.grad { color: var(--ok); }
+.ros-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--ok) 35%, var(--line)); background: color-mix(in srgb, var(--ok) 8%, var(--panel)); cursor: pointer; }
+.ros-opt[hidden] { display: none; }
+.ros-opt input { margin-top: 3px; } .ros-opt small { display: block; color: var(--muted); }

@@ -305,6 +305,7 @@ function viewStudents(c) {
     <button class="btn pri" data-act="importStu">${ico('upload')} วางรายชื่อจาก Excel</button>
     <button class="btn" data-act="addStu">${ico('plus')} เพิ่มทีละคน</button>
     <button class="btn" data-act="renumber">${ico('sort')} จัดเลขที่ใหม่</button>
+    ${(() => { const k = rosterFor(c); return k && k.students.length ? `<button class="btn" data-act="rosterSync" data-v="${c.id}">${ico('download')} ดึงรายชื่อจากทะเบียน ${esc(classOf(k))}</button>` : Calc.activeStudents(c).length ? `<button class="btn ghost" data-act="rosterFromCourse" title="เก็บไว้ใช้กับรายวิชาอื่นของชั้นนี้">${ico('upload')} บันทึกรายชื่อนี้เข้าทะเบียน</button>` : ''; })()}
     <span class="note">${Calc.activeStudents(c).length} คนกำลังเรียน${out ? ' · ย้ายออก ' + out + ' คน (ไม่แสดงใน ปพ.5)' : ''}</span>
   </div></div>
   ${all.length ? `<div class="tbl-wrap"><table class="tbl stack stu-tbl"><thead><tr><th>เลขที่</th><th class="l">เลขประจำตัว</th><th class="l">คำนำหน้า</th><th class="l">ชื่อ</th><th class="l">นามสกุล</th><th class="l">สถานะ</th><th></th></tr></thead><tbody>

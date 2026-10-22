@@ -29,6 +29,7 @@ function newTermDialog() {
     <div class="nt-opts">
       <b>คัดลอกไปด้วย</b>
       <label class="row small"><input type="checkbox" id="ntStu" checked> รายชื่อนักเรียน (ไม่รวมคนที่ย้ายออก)</label>
+      ${roster().classes.length ? `<label class="row small" style="padding-left:26px"><input type="checkbox" id="ntRos" checked> ใช้รายชื่อจาก<b>ทะเบียนนักเรียน</b>ของชั้นในภาคใหม่ ถ้ามี (ขึ้นปีใหม่ ให้กด "เลื่อนชั้น" ในทะเบียนก่อน)</label>` : ''}
       <label class="row small"><input type="checkbox" id="ntStruct" checked> โครงสร้างรายวิชา หน่วย และรายการงาน (คะแนนว่าง)</label>
       <label class="row small"><input type="checkbox" id="ntDesc" checked> คำอธิบายรายวิชาและตัวชี้วัด</label>
       <label class="row small"><input type="checkbox" id="ntTT" checked> ย้ายตารางสอนไปใช้กับรายวิชาใหม่</label>
@@ -39,7 +40,7 @@ function newTermDialog() {
       const picks = Array.from(dd.querySelectorAll('.nt-row')).filter(r => r.querySelector('[data-nt="on"]').checked);
       if (!picks.length) { toast('เลือกอย่างน้อย 1 รายวิชา'); return false; }
       if (picks.some(r => !r.querySelector('[data-nt="code"]').value.trim())) { toast('ใส่รหัสวิชาให้ครบ'); return false; }
-      const opt = { stu: $('#ntStu', dd).checked, struct: $('#ntStruct', dd).checked, desc: $('#ntDesc', dd).checked, tt: $('#ntTT', dd).checked, arc: $('#ntArc', dd).checked };
+      const opt = { ros: !!($('#ntRos', dd) && $('#ntRos', dd).checked), stu: $('#ntStu', dd).checked, struct: $('#ntStruct', dd).checked, desc: $('#ntDesc', dd).checked, tt: $('#ntTT', dd).checked, arc: $('#ntArc', dd).checked };
       const made = picks.map(r => {
         const f = S.courses.find(x => x.id === r.dataset.cid), v = k => r.querySelector(`[data-nt="${k}"]`).value.trim();
         return [f, startNextTerm(f, { code: v('code'), name: v('name') || f.name, grade: v('grade') || f.grade, room: v('room') || f.room }, opt)];
@@ -64,7 +65,9 @@ function startNextTerm(f, over, opt) {
   const c = defaultCourse(S.settings, Object.assign({
     year: t.year, term: t.term, hours: (catalogFind(over.code) || f).hours, credits: (catalogFind(over.code) || f).credits, teacher: f.teacher, group: f.group, type: f.type, level: f.level
   }, over));
-  if (opt.stu) c.students = clone(Calc.activeStudents(f)).map((s, i) => Object.assign(s, { id: newId('s'), no: i + 1, status: 'active' }));
+  const rk = opt.stu && opt.ros ? rosterFind(c.grade, c.room) : null;
+  if (rk && rk.students.length) c.students = courseStudentsFromRoster(rk);
+  else if (opt.stu) c.students = clone(Calc.activeStudents(f)).map((s, i) => Object.assign(s, { id: newId('s'), no: i + 1, status: 'active' }));
   if (opt.struct) {
     c.units = clone(f.units); c.ratio = clone(f.ratio); c.convert = f.convert;
     c.tasks = clone(f.tasks || []).map(x => { x.id = newId('t'); delete x.due; return x; });

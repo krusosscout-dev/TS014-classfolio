@@ -32,10 +32,13 @@ async function flush() {
   }
   pill();
 }
+/* บันทึกตั้งค่า/ทะเบียนที่ค้างอยู่ทันที (ตอนปิดหรือสลับแท็บ) */
+function flushSettings() { if (!S.setPending) return; clearTimeout(S.setTimer); S.setPending = false; try { const j = JSON.stringify(S.settings); Store.saveSettings(S.settings); S.baseSettings = j; } catch (e) { } }
 function touchSettings() {
-  clearTimeout(S.setTimer);
+  clearTimeout(S.setTimer); S.setPending = true;
   S.saveState = 'saving'; pill();
   S.setTimer = setTimeout(async () => {
+    S.setPending = false;
     try { const j = JSON.stringify(S.settings); const p = Store.saveSettings(S.settings); S.baseSettings = j; await p; S.saveState = 'saved'; } catch (e) { S.saveState = 'err'; toast('บันทึกตั้งค่าไม่สำเร็จ: ' + e.message); }
     pill();
   }, 600);
@@ -96,7 +99,9 @@ function pill() {
   el.innerHTML = `<i></i><span>${m[0]}</span>`; el.className = 'save-dot ' + m[1]; el.title = m[0];
 }
 window.addEventListener('online', () => { if (S.saveState === 'offline') flush(); });
-window.addEventListener('beforeunload', e => { if (S.dirty.size) { flush(); e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { flushSettings(); if (S.dirty.size) { flush(); e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('pagehide', () => { flushSettings(); if (S.dirty.size) flush(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { flushSettings(); if (S.dirty.size) flush(); } });
 
 /* ---------------- เลิกทำ / ทำซ้ำ ---------------- */
 function snap(c) {
@@ -162,6 +167,7 @@ function pageMeta(c) {
   if (S.view === 'timetable') return { icon: 'calendar', hue: 'cyan', title: 'ตารางสอน', crumb: 'ตารางสอนของฉัน และตารางเรียนรายห้อง' };
   if (S.view === 'live') { const L = S.live || {}; return { icon: 'live', hue: 'rose', title: 'Live Class', crumb: 'เช็คชื่อ · บันทึกการสอน · มอบงาน · คะแนนพิเศษ' + (L.date ? ' · ' + thaiDate(L.date) + ' คาบ ' + L.period : '') }; }
   if (S.view === 'tools') return { icon: 'dice', hue: 'violet', title: 'Class Tools', crumb: 'สุ่มชื่อ · จับกลุ่ม' };
+  if (S.view === 'roster') return { icon: 'users', hue: 'teal', title: 'ทะเบียนนักเรียน', crumb: 'รายชื่อกลางรายชั้น ใช้ได้ทุกรายวิชา' };
   if (!c) return { icon: 'book', hue: 'indigo', title: 'ClassFolio', crumb: '' };
   const t = TABS.find(x => x[0] === S.tab) || TABS[0];
   return { icon: t[2], hue: t[3], title: t[1], crumb: 'รายวิชา › ' + c.code + ' ' + c.name };
@@ -179,7 +185,7 @@ function render() {
   const todo = todoMap(c);
   const m = pageMeta(c);
   const sorted = activeCourses().concat(c && c.archived ? [c] : []).slice().sort((a, b) => (b.year - a.year) || String(b.term).localeCompare(String(a.term)) || thColl.compare(a.code, b.code));
-  const isOn = k => ['home', 'timetable', 'settings', 'live', 'tools'].includes(k) ? S.view === k : S.view === 'course' && S.tab === k;
+  const isOn = k => ['home', 'timetable', 'settings', 'live', 'tools', 'roster'].includes(k) ? S.view === k : S.view === 'course' && S.tab === k;
   const navBtn = (act, v, label, ic, hue, n) => `<button class="nav ${isOn(v || act) ? 'on' : ''}" data-hue="${hue}" data-act="${act}" ${v ? `data-v="${v}"` : ''} ${act === 'tab' && !c ? 'disabled' : ''}><span class="chipico">${ico(ic)}</span><span class="nl">${label}</span>${n ? `<span class="todo" title="หน้า ปพ.5 ที่ยังไม่ครบ ${n} หน้า">${n}</span>` : ''}</button>`;
   const initial = String(S.settings.teacher || 'ครู').trim().charAt(0);
   root.innerHTML = `
@@ -191,6 +197,7 @@ function render() {
         ${navBtn('live', '', 'Live Class', 'live', 'rose')}
         ${navBtn('timetable', '', 'ตารางสอน', 'calendar', 'cyan')}
         ${navBtn('tools', '', 'Class Tools', 'dice', 'violet')}
+        ${navBtn('roster', '', 'ทะเบียนนักเรียน', 'users', 'teal')}
       </div>
       <div class="side-label">รายวิชา</div>
       ${c ? `<button class="switch ${lvClass(c)}" data-act="switcher" aria-expanded="${S.switcher}"><span class="lv">${levelOfCourse(c)}</span><span class="sw-t"><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(termLabel(c))}</small></span>${ico('chev')}</button>` : `<button class="switch" data-act="newCourse"><span class="sw-t"><b>สร้างรายวิชา</b><small>ยังไม่มีรายวิชา</small></span>${ico('plus')}</button>`}
@@ -232,7 +239,7 @@ function render() {
 
 function moreSheet() {
   const c = cur(), todo = todoMap(c);
-  const items = [['home', '', 'หน้าแรก', 'home', 'indigo'], ['live', '', 'Live Class', 'live', 'rose'], ['timetable', '', 'ตารางสอน', 'calendar', 'cyan'], ['tools', '', 'Class Tools', 'dice', 'violet']].concat(c ? TABS.map(([k, n, ic, hue]) => ['tab', k, n, ic, hue]) : []).concat([['settings', '', 'ตั้งค่า', 'settings', 'slate']]);
+  const items = [['home', '', 'หน้าแรก', 'home', 'indigo'], ['live', '', 'Live Class', 'live', 'rose'], ['timetable', '', 'ตารางสอน', 'calendar', 'cyan'], ['tools', '', 'Class Tools', 'dice', 'violet'], ['roster', '', 'ทะเบียนนักเรียน', 'users', 'teal']].concat(c ? TABS.map(([k, n, ic, hue]) => ['tab', k, n, ic, hue]) : []).concat([['settings', '', 'ตั้งค่า', 'settings', 'slate']]);
   const d = document.createElement('dialog'); d.className = 'dlg sheet-dlg';
   d.innerHTML = `<div class="dlg-h"><h2>เมนูทั้งหมด</h2><button class="btn ghost sm" data-x aria-label="ปิด">✕</button></div>
     ${c ? `<button class="sheet-course ${lvClass(c)}" data-go="pick"><span class="lv">${levelOfCourse(c)}</span><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(termLabel(c))} · แตะเพื่อเปลี่ยนวิชา</small></span>${ico('chev')}</button>` : ''}
@@ -252,6 +259,7 @@ function renderView(c) {
   if (S.view === 'timetable') return viewTimetable();
   if (S.view === 'live') return viewLive();
   if (S.view === 'tools') return viewTools();
+  if (S.view === 'roster') return viewRoster();
   if (!c) return `${Store.mode === 'local' ? localBanner() : ''}<div class="card empty"><h3>ยังไม่มีรายวิชา</h3><p>สร้างรายวิชาแรก หรือโหลดข้อมูลตัวอย่างเพื่อทดลองใช้</p><div class="row"><button class="btn pri" data-act="newCourse">${ico('plus')} สร้างรายวิชา</button><button class="btn" data-act="demo">โหลดข้อมูลตัวอย่าง</button></div></div>`;
   const v = { overview: viewOverview, book: viewBook, teach: viewTeach, structure: viewStructure, desc: viewDesc, students: viewStudents, att: viewAtt, assess: viewAssess, results: viewResults, print: viewPrint, log: viewLog }[S.tab] || viewOverview;
   return (c.archived ? `<div class="banner arc">${ico('book')}<span><b>คลังภาคเรียนเก่า</b> รายวิชานี้จบภาคเรียนแล้ว ไม่แสดงใน Live Class และตารางสอน แก้ไข พิมพ์ ปพ.5 และส่งออก Excel ได้ตามปกติ</span><button class="btn sm" data-act="unarchive">${ico('undo')} นำกลับมาใช้งาน</button></div>` : '') + v(c);
@@ -482,6 +490,7 @@ const ACT = {
       for (const c of S.courses) if (!keep.has(c.id)) await Store.deleteCourse(c.id);
       for (const c of data.courses) await saveNow(c);
       S.courses = data.courses; S.cur = S.courses[0]?.id || null; S.undo = {}; S.redo = {};
+      if (data.roster) { S.settings.roster = data.roster; touchSettings(); }
       S.backups = await Store.listBackups(); S.view = 'home'; render(); toast('กู้คืนข้อมูลแล้ว');
     });
   },
@@ -493,7 +502,7 @@ const ACT = {
     toast('ดาวน์โหลดไฟล์สำรองแล้ว');
   }
 };
-Object.assign(ACT, LIVE_ACT, TERM_ACT);
+Object.assign(ACT, LIVE_ACT, TERM_ACT, ROSTER_ACT);
 function coursePicker() {
   const list = activeCourses().sort((a, b) => (b.year - a.year) || thColl.compare(a.code, b.code)), arc = archivedCourses();
   const d = dialog('เลือกรายวิชา', `<div style="display:grid;gap:6px">${list.map(x => `<button class="btn ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(classOf(x))} · ${esc(termLabel(x))}</button>`).join('')}<button class="btn" data-pick="new">${ico('plus')} สร้างรายวิชา</button>${arc.length ? `<div class="side-label" style="color:var(--muted);margin-top:6px">คลังภาคเรียนเก่า</div>${arc.map(x => `<button class="btn ghost ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(classOf(x))} · ${esc(termLabel(x))}</button>`).join('')}` : ''}</div>`, []);
@@ -551,6 +560,7 @@ function newCourseDialog() {
   </div>
   ${others.length ? `<label class="field"><span>คัดลอกจากรายวิชาเดิม (ไม่คัดลอกคะแนน)</span><select class="inp" id="nFrom"><option value="">ไม่คัดลอก</option>${others.map(o => `<option value="${o.id}">${esc(o.code)} ${esc(o.name)} · ${esc(classOf(o))} · ${esc(termLabel(o))}</option>`).join('')}</select></label>
   <div class="row small"><label class="row"><input type="checkbox" id="nCopyStu" checked> รายชื่อนักเรียน</label><label class="row"><input type="checkbox" id="nCopyStruct" checked> โครงสร้างและงาน</label><label class="row"><input type="checkbox" id="nCopyDesc" checked> คำอธิบายรายวิชา</label></div>` : ''}
+  <label class="ros-opt" id="nRosL" hidden><input type="checkbox" id="nRos" checked><span id="nRosT"></span></label>
   <p class="note">ตัวเลขตัวแรกของรหัสวิชา 1 = ประถม (ปพ.5 ป) 2–3 = มัธยม (ปพ.5 ต)</p>`;
   const nd = dialog('สร้างรายวิชา', body, [{ label: 'ยกเลิก', cls: 'ghost' }, {
     label: 'สร้างรายวิชา', cls: 'pri', fn: d => {
@@ -566,6 +576,8 @@ function newCourseDialog() {
         if ($('#nCopyStruct', d).checked) { c.units = clone(f.units); c.tasks = clone(f.tasks).map(t => (t.id = newId('t'), t)); c.tasks.forEach(t => c.scores[t.id] = {}); c.convert = f.convert; c.group = f.group; c.type = f.type; c.ratio = { mid: rm, final: rf }; if (rm !== Number(f.ratio.mid)) fitUnitWeights(c); else { const fu = c.units.find(u => u.isFinal); if (fu) fu.weight = rf; } }
         if ($('#nCopyDesc', d).checked) { c.descHtml = f.descHtml; c.indicators = f.indicators; c.descFont = f.descFont; c.descLine = f.descLine; }
       }
+      const rk = rosterFind(c.grade, c.room), copied = fromId && $('#nCopyStu', d) && $('#nCopyStu', d).checked;
+      if (rk && $('#nRos', d).checked && !copied) c.students = courseStudentsFromRoster(rk);
       const cat = catalogFind(code); if (cat) { c.type = cat.type; c.group = 'สังคมศึกษา ศาสนา และวัฒนธรรม'; }
       c.log = [{ t: Date.now(), text: 'สร้างรายวิชา' + (fromId ? ' (คัดลอกจากวิชาเดิม)' : '') }];
       S.courses.push(c); S.cur = c.id; S.view = 'course'; S.tab = c.students.length ? 'book' : 'students'; touch(c); render(); toast('สร้างรายวิชาแล้ว');
@@ -584,11 +596,18 @@ function newCourseDialog() {
   ['#nCode', '#nTerm', '#nFrom', '#nCopyStruct'].forEach(k => { const x = $(k, nd); if (x) x.addEventListener(x.tagName === 'INPUT' && x.type !== 'checkbox' ? 'input' : 'change', fill); });
   $('#nMid', nd).addEventListener('input', () => { touched = true; const v = Math.max(0, Math.min(100, Number($('#nMid', nd).value) || 0)); $('#nFin', nd).value = 100 - v; });
   $('#nFin', nd).addEventListener('input', () => { touched = true; const v = Math.max(0, Math.min(100, Number($('#nFin', nd).value) || 0)); $('#nMid', nd).value = 100 - v; });
-  fill();
+  const rosInfo = () => {
+    const k = rosterFind($('#nGrade', nd).value, $('#nRoom', nd).value), copied = $('#nFrom', nd) && $('#nFrom', nd).value && $('#nCopyStu', nd).checked;
+    $('#nRosL', nd).hidden = !k || !k.students.length;
+    if (k) $('#nRosT', nd).innerHTML = `<b>ใช้รายชื่อจากทะเบียนนักเรียน ชั้น ${esc(classOf(k))}</b> <small>${k.students.length} คน${copied ? ' · ตอนนี้เลือกคัดลอกรายชื่อจากวิชาเดิมอยู่ ระบบจะใช้รายชื่อจากวิชาเดิมแทน' : ''}</small>`;
+  };
+  ['#nGrade', '#nRoom'].forEach(k => $(k, nd).addEventListener('input', rosInfo));
+  ['#nFrom', '#nCopyStu'].forEach(k => { const x = $(k, nd); if (x) x.addEventListener('change', rosInfo); });
+  fill(); rosInfo();
   bindCatalogPicker(nd, x => {
     $('#nCode', nd).value = x.code; $('#nName', nd).value = x.name; $('#nGrade', nd).value = x.grade;
     $('#nTerm', nd).value = x.term; $('#nHours', nd).value = x.hours; $('#nCred', nd).value = x.credits;
-    fill();
+    fill(); rosInfo();
   });
 }
 
@@ -663,6 +682,7 @@ function openPalette() {
   const items = [];
   S.courses.forEach(c => items.push({ label: c.code + ' ' + c.name, sub: classOf(c) + ' · ' + termLabel(c) + (c.archived ? ' · คลังเก่า' : ''), run: () => ACT.open(c.id) }));
   if (cur()) TABS.forEach(([k, n]) => items.push({ label: n, sub: 'เมนูของ ' + cur().code, run: () => ACT.tab(k) }));
+  items.push({ label: 'ทะเบียนนักเรียน', sub: 'รายชื่อกลางรายชั้น · เลื่อนชั้น', run: ACT.roster });
   items.push({ label: 'Live Class', sub: 'เช็คชื่อ บันทึกการสอน คะแนนพิเศษ', run: ACT.live }, { label: 'Class Tools', sub: 'สุ่มชื่อ จับกลุ่ม', run: ACT.tools }, { label: 'ตารางสอน', sub: 'ตารางสอนและตารางเรียน', run: ACT.timetable }, { label: 'ตั้งค่า', sub: 'ทั้งระบบ', run: ACT.settings }, { label: 'สร้างรายวิชา', sub: 'คำสั่ง', run: ACT.newCourse }, { label: 'เริ่มภาคเรียนใหม่', sub: 'คำสั่ง · ย้ายวิชาเดิมเข้าคลัง', run: ACT.newTerm }, { label: 'สลับโหมดสว่าง/มืด', sub: 'คำสั่ง', run: ACT.cycleTheme });
   if (cur()) { items.push({ label: 'เพิ่มงานในสมุดคะแนน', sub: 'คำสั่ง', run: () => { ACT.tab('book'); taskDialog(null); } }); Calc.activeStudents(cur()).forEach(s => items.push({ label: studentName(s), sub: 'เลขที่ ' + s.no + ' · ดูในตัดเกรด', run: () => ACT.tab('results') })); }
   let sel = 0, shown = [];
@@ -749,6 +769,7 @@ document.addEventListener('input', e => {
     const fu = c.units.find(u => u.isFinal); if (fu) fu.weight = c.ratio.final; touch(c); return;
   }
   if (d.rem && c) { const [sid, f] = d.rem.split('|'); const r = (c.remedial[sid] = c.remedial[sid] || {}); r[f] = el.value; if (f === 'grade' && el.value && !r.date) r.date = new Date().toISOString().slice(0, 10); touch(c); return; }
+  if (d.rs) { const [kid, sid, f] = d.rs.split('|'); const k = roster().classes.find(x => x.id === kid), s = k && k.students.find(x => x.id === sid); if (s) { s[f] = el.value.trim(); touchSettings(); } return; }
   if (d.set) {
     const v = el.type === 'number' ? Number(el.value) : el.value; S.settings[d.set] = v;
     const pair = { ratioMid: 'ratioFinal', ratioFinal: 'ratioMid', ratioMidP: 'ratioFinalP', ratioFinalP: 'ratioMidP' }[d.set];
@@ -848,6 +869,7 @@ function restoreFile(file) {
     dialog('ตรวจก่อนนำเข้า', `<p>ไฟล์สำรองวันที่ ${esc(thaiDate(data.exportedAt))} มี <b>${data.courses.length}</b> รายวิชา</p><ul><li>รายวิชาใหม่ ${nNew} วิชา จะถูกเพิ่ม</li><li>รายวิชาที่มีอยู่แล้ว ${nSame} วิชา จะถูกแทนที่ด้วยข้อมูลในไฟล์</li></ul><label class="row small"><input type="checkbox" id="rsSet"> นำเข้าตั้งค่าโรงเรียนด้วย</label>`,
       [{ label: 'ยกเลิก', cls: 'ghost' }, {
         label: 'นำเข้า', cls: 'pri', fn: async d => {
+          if (data.settings && data.settings.roster && !(S.settings.roster && S.settings.roster.classes && S.settings.roster.classes.length)) { S.settings.roster = data.settings.roster; touchSettings(); }
           for (const c of data.courses) { const i = S.courses.findIndex(x => x.id === c.id); normCourse(c); if (i >= 0) S.courses[i] = c; else S.courses.push(c); await saveNow(c); }
           if ($('#rsSet', d).checked && data.settings) { S.settings = Object.assign(defaultSettings(), data.settings); applyTheme(); touchSettings(); }
           S.cur = S.cur || S.courses[0]?.id; render(); toast('นำเข้าข้อมูลแล้ว');
@@ -906,7 +928,7 @@ const BK_KEEP = () => Store.mode === 'firebase' ? 14 : 7;
 function todayId() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 async function saveBackupNow(pre) {
   const id = pre ? todayId() + '-pre' + Date.now() : todayId();
-  const json = JSON.stringify({ app: 'samutwadphon', version: 1, exportedAt: new Date().toISOString(), courses: S.courses });
+  const json = JSON.stringify({ app: 'samutwadphon', version: 1, exportedAt: new Date().toISOString(), courses: S.courses, roster: S.settings.roster || null });
   await Store.saveBackup({ id, at: Date.now(), n: S.courses.length, pre: !!pre }, json);
   const list = await Store.listBackups();
   for (const b of list.slice(BK_KEEP())) await Store.deleteBackup(b.id);
