@@ -876,20 +876,21 @@ async function autoBackup() {
 }
 
 /* ---------------- หน้าแรกสุด (ก่อนเข้าระบบ) ---------------- */
-function renderLanding(user, msg) {
+function renderLanding(user, msg, pending) {
   const st = S.settings;
-  const label = Store.mode === 'local' ? 'เข้าใช้งาน' : user ? 'เข้าสู่ระบบ' : 'เข้าสู่ระบบด้วย Google';
+  const label = pending ? 'กำลังเตรียมระบบ…' : Store.mode === 'local' ? 'เข้าใช้งาน' : user ? 'เข้าสู่ระบบ' : 'เข้าสู่ระบบด้วย Google';
+  const keep = $('#app .landing .ld-art');
   const feats = [['book', 'blue', 'สมุดคะแนน', 'กรอกตามจริง แปลงให้เอง'], ['check', 'green', 'ตัดเกรด', 'ร มส คำนวณอัตโนมัติ'], ['print', 'rose', 'เล่ม ปพ.5', 'จัดหน้า A4 พร้อมพิมพ์'], ['users', 'teal', 'ทุกอุปกรณ์', 'คอม แท็บเล็ต มือถือ']];
-  $('#app').innerHTML = `<div class="landing"><div class="ld-in">
+  const html = `<div class="landing"><div class="ld-in">
     <div class="ld-copy">
       <div class="brand"><img class="brand-logo" src="icons/icon-192.png" alt="ClassFolio"><span><b>ClassFolio</b><small>Smart Teacher Workspace</small></span></div>
       <h1>บันทึกคะแนน ตัดเกรด<br>พิมพ์ ปพ.5 ในที่เดียว</h1>
       <p>กรอกคะแนนตามจริงของแต่ละงาน ระบบแปลงเป็นคะแนน ปพ.5 ตัดเกรด และจัดหน้าเอกสาร A4 ให้ครบทั้งเล่ม</p>
       <div class="ld-feats">${feats.map(([i, h, t, d]) => `<div class="ld-feat" data-hue="${h}"><span class="chipico">${ico(i)}</span><span><b>${t}</b><small>${d}</small></span></div>`).join('')}</div>
       ${msg ? `<div class="badbox">${esc(msg)}</div>` : ''}
-      <div class="row"><button class="btn pri ld-go" id="enterBtn">${label} ${ico('chev')}</button>${user && user.email ? `<span class="small" style="color:var(--side-muted)">${esc(user.email)}</span>` : ''}</div>
+      <div class="row"><button class="btn pri ld-go" id="enterBtn" ${pending ? 'disabled' : ''}>${label} ${pending ? '' : ico('chev')}</button>${user && user.email ? `<span class="small" style="color:var(--side-muted)">${esc(user.email)}</span>` : ''}</div>
     </div>
-    <div class="ld-art" aria-hidden="true"><img class="ld-img" src="hero.webp" alt="" onload="this.parentElement.classList.add('hasimg')" onerror="this.remove()"><div class="ld-stage">
+    <div class="ld-art hasimg" aria-hidden="true"><img class="ld-img" src="hero.webp" alt="" width="1536" height="1024" fetchpriority="high" onload="this.classList.add('on')" onerror="this.parentElement.classList.remove('hasimg');this.remove()"><div class="ld-stage">
       <div class="ld-card a"><div class="ld-h" data-hue="blue"><span class="chipico">${ico('book')}</span><b>สมุดคะแนน</b></div>
         ${[['ใบงาน', '18/20', 'ok'], ['สอบย่อย', '27/30', 'ok'], ['โครงงาน', 'ค้าง', 'warn']].map(([a, b, c]) => `<div class="ld-r"><span>${a}</span><span class="chip ${c}">${b}</span></div>`).join('')}</div>
       <div class="ld-card b"><div class="ld-h" data-hue="green"><span class="chipico">${ico('check')}</span><b>ระดับผลการเรียน</b></div>
@@ -898,7 +899,11 @@ function renderLanding(user, msg) {
       <div class="ld-card c"><div class="ld-h" data-hue="rose"><span class="chipico">${ico('print')}</span><b>เล่ม ปพ.5</b></div><div class="ld-r"><span>ทุกหน้าครบถ้วน</span><span class="chip ok">พร้อมพิมพ์</span></div></div>
     </div></div>
   </div></div>`;
+  /* ถ้าหน้าแรกแสดงอยู่แล้ว เปลี่ยนเฉพาะฝั่งข้อความ ภาพไม่ต้องโหลดใหม่ */
+  if (keep) { const t = document.createElement('div'); t.innerHTML = html; $('#app .ld-copy').replaceWith(t.querySelector('.ld-copy')); }
+  else $('#app').innerHTML = html;
   fitBrand();
+  if (pending) return;
   $('#enterBtn').onclick = async () => {
     const b = $('#enterBtn'); b.disabled = true;
     try { S.user = user || await Store.signIn(); await loadAll(); } catch (e) { renderLanding(null, e.message); }
@@ -933,6 +938,7 @@ async function boot() {
   try { const st = await (Store.mode === 'local' ? Store.getSettings() : Promise.resolve(null)); if (st) Object.assign(S.settings, st); } catch (e) { }
   applyTheme();
   let user = null, err = '';
+  if (Store.mode !== 'local') renderLanding(null, '', true);
   try { user = await Store.init(); } catch (e) { err = e.message; }
   renderLanding(user, err);
   if ('serviceWorker' in navigator && location.protocol === 'https:' && window.self === window.top) {

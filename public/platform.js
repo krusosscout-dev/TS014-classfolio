@@ -39,7 +39,7 @@
   function loadScript(src) {
     return new Promise((res, rej) => {
       const s = document.createElement('script');
-      s.src = src; s.onload = res;
+      s.src = src; s.async = false; s.onload = res;
       s.onerror = () => rej(new Error('โหลดไฟล์ Firebase ไม่ได้ ตรวจการเชื่อมต่ออินเทอร์เน็ต'));
       document.head.appendChild(s);
     });
@@ -49,9 +49,8 @@
   const FB = {
     mode: 'firebase', user: null,
     async init() {
-      await loadScript(BASE + 'firebase-app-compat.js');
-      await loadScript(BASE + 'firebase-auth-compat.js');
-      await loadScript(BASE + 'firebase-firestore-compat.js');
+      /* ดาวน์โหลดพร้อมกัน 3 ไฟล์ แต่ทำงานตามลำดับ (async=false) */
+      await Promise.all(['firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js'].map(f => loadScript(BASE + f)));
       firebase.initializeApp(cfg);
       this.auth = firebase.auth();
       this.db = firebase.firestore();

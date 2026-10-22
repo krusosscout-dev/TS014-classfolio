@@ -353,7 +353,8 @@ dialog.dlg::backdrop { background: rgba(12, 16, 40, .5); }
 .ld-stage { position: relative; width: 100%; height: 100%; }
 .ld-img { display: none; }
 .ld-art.hasimg { height: auto; }
-.ld-art.hasimg .ld-img { display: block; width: 112%; margin-left: -4%; height: auto; max-height: 78vh; object-fit: contain; filter: drop-shadow(0 24px 40px rgba(0,0,0,.35)); }
+.ld-art.hasimg .ld-img { display: block; width: 112%; margin-left: -4%; height: auto; max-height: 78vh; object-fit: contain; filter: drop-shadow(0 24px 40px rgba(0,0,0,.35)); opacity: 0; transition: opacity .4s ease; }
+.ld-art.hasimg .ld-img.on { opacity: 1; }
 .ld-art.hasimg .ld-card { display: none; }
 .ld-card { position: absolute; background: var(--panel); color: var(--ink); border-radius: 18px; padding: 16px 18px; box-shadow: 0 24px 50px rgba(0,0,0,.35); display: grid; gap: 10px; }
 .ld-card.a { width: 250px; left: 0; top: 0; transform: rotate(-3deg); z-index: 2; }
