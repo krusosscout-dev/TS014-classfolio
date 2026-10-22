@@ -1,0 +1,5 @@
+/* ฟอนต์เล่มรายงาน ปพ.5: TH SarabunPSK */
+@font-face{font-family:'THSarabunPSK';src:url('fonts/THSarabunPSK-Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:'THSarabunPSK';src:url('fonts/THSarabunPSK-Bold.ttf') format('truetype');font-style:normal;font-weight:700;font-display:swap}
+@font-face{font-family:'THSarabunPSK';src:url('fonts/THSarabunPSK-Italic.ttf') format('truetype');font-style:italic;font-weight:400;font-display:swap}
+@font-face{font-family:'THSarabunPSK';src:url('fonts/THSarabunPSK-BoldItalic.ttf') format('truetype');font-style:italic;font-weight:700;font-display:swap}

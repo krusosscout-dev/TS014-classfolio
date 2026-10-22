@@ -1,0 +1,21 @@
+rules_version = '2';
+// สมุดวัดผล ปพ.5 · กฎความปลอดภัยของฐานข้อมูล
+// แก้อีเมลในรายการ teacherEmails ให้ตรงกับ public/firebase-config.js
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function teacherEmails() { return ['krusosscout@gmail.com']; }
+    function isTeacher() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in teacherEmails();
+    }
+    // ครูอ่านและเขียนได้เฉพาะข้อมูลของตัวเองเท่านั้น
+    match /teachers/{uid}/{document=**} {
+      allow read, write: if isTeacher() && request.auth.uid == uid;
+    }
+    // ส่วนอื่นปิดทั้งหมด
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
