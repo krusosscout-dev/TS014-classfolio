@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "ClassFolio · Smart Teacher Workspace",
+  "short_name": "ClassFolio",
+  "description": "บันทึกคะแนน ตัดเกรด ตารางสอน และพิมพ์เล่ม ปพ.5",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1b2059",
+  "theme_color": "#1b2059",
+  "lang": "th",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
