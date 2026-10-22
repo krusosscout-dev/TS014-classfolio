@@ -530,7 +530,7 @@ function taskDialog(tid) {
 /* ---------------- กล่อง: รายวิชาใหม่ ---------------- */
 function newCourseDialog() {
   const others = S.courses;
-  const body = `<div class="form-grid">
+  const body = `${catalogPicker()}<div class="form-grid">
     <label class="field"><span>รหัสวิชา</span><input class="inp" id="nCode" placeholder="ส21101"></label>
     <label class="field"><span>ชื่อวิชา</span><input class="inp" id="nName" placeholder="สังคมศึกษา 1"></label>
     <label class="field"><span>ชั้น</span><input class="inp" id="nGrade" placeholder="ม.1"></label>
@@ -559,10 +559,11 @@ function newCourseDialog() {
         if ($('#nCopyStruct', d).checked) { c.units = clone(f.units); c.tasks = clone(f.tasks).map(t => (t.id = newId('t'), t)); c.tasks.forEach(t => c.scores[t.id] = {}); c.convert = f.convert; c.group = f.group; c.type = f.type; c.ratio = { mid: rm, final: rf }; if (rm !== Number(f.ratio.mid)) fitUnitWeights(c); else { const fu = c.units.find(u => u.isFinal); if (fu) fu.weight = rf; } }
         if ($('#nCopyDesc', d).checked) { c.descHtml = f.descHtml; c.indicators = f.indicators; c.descFont = f.descFont; c.descLine = f.descLine; }
       }
+      const cat = catalogFind(code); if (cat) { c.type = cat.type; c.group = 'สังคมศึกษา ศาสนา และวัฒนธรรม'; }
       c.log = [{ t: Date.now(), text: 'สร้างรายวิชา' + (fromId ? ' (คัดลอกจากวิชาเดิม)' : '') }];
       S.courses.push(c); S.cur = c.id; S.view = 'course'; S.tab = c.students.length ? 'book' : 'students'; touch(c); render(); toast('สร้างรายวิชาแล้ว');
     }
-  }]);
+  }], { wide: true });
   /* เติมสัดส่วนตามระดับ (ประถม/มัธยม) จนกว่าครูจะแก้เอง */
   let touched = false;
   const fill = () => {
@@ -577,6 +578,11 @@ function newCourseDialog() {
   $('#nMid', nd).addEventListener('input', () => { touched = true; const v = Math.max(0, Math.min(100, Number($('#nMid', nd).value) || 0)); $('#nFin', nd).value = 100 - v; });
   $('#nFin', nd).addEventListener('input', () => { touched = true; const v = Math.max(0, Math.min(100, Number($('#nFin', nd).value) || 0)); $('#nMid', nd).value = 100 - v; });
   fill();
+  bindCatalogPicker(nd, x => {
+    $('#nCode', nd).value = x.code; $('#nName', nd).value = x.name; $('#nGrade', nd).value = x.grade;
+    $('#nTerm', nd).value = x.term; $('#nHours', nd).value = x.hours; $('#nCred', nd).value = x.credits;
+    fill();
+  });
 }
 
 /* ---------------- กล่อง: นำเข้ารายชื่อ ---------------- */

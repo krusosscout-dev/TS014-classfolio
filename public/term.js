@@ -12,12 +12,12 @@ function newTermDialog() {
   const list = activeCourses().slice().sort((a, b) => thColl.compare(a.code, b.code));
   if (!list.length) { toast('ยังไม่มีรายวิชาที่ใช้อยู่'); return; }
   const rows = list.map(c => {
-    const t = nextTerm(c);
+    const t = nextTerm(c), nx = catalogNext(c.code) || { code: c.code, name: c.name };
     return `<div class="nt-row" data-cid="${c.id}">
       <label class="nt-pick"><input type="checkbox" data-nt="on" checked><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(c.grade)}/${esc(c.room)} · ${esc(termLabel(c))} → <b>${esc(termText(t, c))}</b></small></span></label>
       <div class="nt-fields">
-        <label class="field"><span>รหัสวิชาใหม่</span><input class="inp" data-nt="code" value="${esc(c.code)}"></label>
-        <label class="field"><span>ชื่อวิชา</span><input class="inp" data-nt="name" value="${esc(c.name)}"></label>
+        <label class="field"><span>รหัสวิชาใหม่</span><input class="inp" data-nt="code" value="${esc(nx.code)}"></label>
+        <label class="field"><span>ชื่อวิชา</span><input class="inp" data-nt="name" value="${esc(nx.name)}"></label>
         <label class="field"><span>ชั้น</span><input class="inp" data-nt="grade" value="${esc(c.grade)}"></label>
         <label class="field"><span>ห้อง</span><input class="inp" data-nt="room" value="${esc(c.room)}"></label>
       </div>
@@ -62,7 +62,7 @@ function newTermDialog() {
 function startNextTerm(f, over, opt) {
   const t = nextTerm(f);
   const c = defaultCourse(S.settings, Object.assign({
-    year: t.year, term: t.term, hours: f.hours, credits: f.credits, teacher: f.teacher, group: f.group, type: f.type, level: f.level
+    year: t.year, term: t.term, hours: (catalogFind(over.code) || f).hours, credits: (catalogFind(over.code) || f).credits, teacher: f.teacher, group: f.group, type: f.type, level: f.level
   }, over));
   if (opt.stu) c.students = clone(Calc.activeStudents(f)).map((s, i) => Object.assign(s, { id: newId('s'), no: i + 1, status: 'active' }));
   if (opt.struct) {

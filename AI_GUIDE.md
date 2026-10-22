@@ -3,7 +3,7 @@
 คู่มือสำหรับ AI ที่แก้โค้ดต่อ เว็บแบบ static (ไม่มีขั้นตอน build) JavaScript ธรรมดา ไม่มีเฟรมเวิร์ก
 
 ## ลำดับการโหลด (index.html)
-firebase-config.js → calc.js → sync.js → platform.js → util.js → demo.js → xlsx.js → print.js → views.js → timetable.js → live.js → export.js → term.js → app.js
+firebase-config.js → calc.js → sync.js → platform.js → util.js → demo.js → xlsx.js → print.js → views.js → timetable.js → live.js → export.js → term.js → catalog.js → app.js
 ทุกไฟล์ (ยกเว้น calc.js, sync.js, platform.js, xlsx.js) ประกาศฟังก์ชันระดับ global ใช้ร่วมกัน
 
 ## หน้าที่ของแต่ละไฟล์
@@ -14,6 +14,7 @@ firebase-config.js → calc.js → sync.js → platform.js → util.js → demo.
 - `xlsx.js` → `window.XLSX.build/download(name, sheets)` เขียนไฟล์ .xlsx เอง (zip STORE + inlineStr) ไม่พึ่งไลบรารี sheet = `{name, title, rows, header, freeze:{r,c}, cols, center:[col], plainFrom}`
 - `export.js` `excelSheets(c)` 4 ชีต: สรุปผลการเรียน · สมุดคะแนนดิบ · เวลาเรียนรายคาบ · บันทึกการสอน, `exportExcel(c)` (ปุ่ม `data-act="xlsx"` ในหน้าตัดเกรดและ ปพ.5)
 - `term.js` เริ่มภาคเรียนใหม่ (`newTermDialog`, `startNextTerm`, `nextTerm`: 1→2 ปีเดิม, 2→1 ปีถัดไป, 'ปี'→'ปี' ปีถัดไป) และคลังภาคเรียนเก่า (`course.archived`) **รายการวิชาที่ใช้งานอยู่ต้องใช้ `activeCourses()` เสมอ** (แถบข้าง หน้าแรก Live Class Class Tools ตารางสอน งานใกล้กำหนด) ส่วน `S.courses` คือทั้งหมดรวมคลัง
+- `catalog.js` `SUBJECT_CATALOG` รายวิชากลุ่มสังคมของโรงเรียนวัดบางปูน (ป.1–6 รายปี, ม.1–3 แยกภาค) ใช้ในกล่องสร้างรายวิชา (`catalogPicker`/`bindCatalogPicker`) และเสนอรหัสภาคถัดไปตอนเริ่มภาคเรียนใหม่ (`catalogNext`) · สัดส่วนเริ่มต้นแยก `ratioMidP/ratioFinalP` (ประถม) กับ `ratioMid/ratioFinal` (มัธยม) · `fitUnitWeights(c)` ปรับคะแนนหน่วยให้รวมเท่าสัดส่วนระหว่างเรียน
 - `util.js` ตัวช่วย (`$`, `esc`, `newId`, `ico`) ค่าคงที่ (`TABS`, `ASSESS`, `GROUPS`, `PALETTES`) ค่าเริ่มต้น (`defaultSettings`, `defaultCourse`) และสถานะ `S`
 - `views.js` สร้าง HTML ของแต่ละแท็บ (`viewOverview`, `viewBook`, ... ) + `checkPages` (ความพร้อม 11 หน้า) + `risksOf`
 - `print.js` → `Print.render(course, settings, {pages, bw, wm})` คืน HTML ของแผ่น A4 (`.sheet`, แนวนอนใช้ `.sheet.land` + `@page land`)
