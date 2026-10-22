@@ -222,7 +222,7 @@ function viewStructure(c) {
     </div>
   </div>
   <div class="card">
-    <div class="card-h"><h2>สัดส่วนคะแนนและการแปลงคะแนน</h2></div>
+    <div class="card-h"><h2>สัดส่วนคะแนนและการแปลงคะแนน</h2><span class="chip acc">เฉพาะรายวิชานี้</span></div>
     <div class="form-grid">
       <label class="field"><span>ระหว่างเรียน</span><input class="inp" type="number" data-ratio="mid" value="${esc(c.ratio.mid)}" min="0" max="100"></label>
       <label class="field"><span>ปลาย${lv === 'ป' ? 'ปี' : 'ภาค'}</span><input class="inp" type="number" data-ratio="final" value="${esc(c.ratio.final)}" min="0" max="100"></label>
@@ -233,7 +233,7 @@ function viewStructure(c) {
   </div>
   <div class="card">
     <div class="card-h"><h2>หน่วยการเรียนรู้และน้ำหนักคะแนน</h2>
-      <span class="chip ${midSum === Number(c.ratio.mid) ? 'ok' : 'warn'}">ระหว่างเรียน ${midSum}/${esc(c.ratio.mid)}</span>
+      <span class="chip ${midSum === Number(c.ratio.mid) ? 'ok' : 'warn'}">ระหว่างเรียน ${midSum}/${esc(c.ratio.mid)}</span>${midSum !== Number(c.ratio.mid) && mids.length ? `<button class="btn sm" data-act="fitUnits" title="คงสัดส่วนระหว่างหน่วยไว้เหมือนเดิม">${ico('bolt')} ปรับให้รวม ${esc(c.ratio.mid)} อัตโนมัติ</button>` : ''}
       <button class="btn" data-act="addUnit">${ico('plus')} เพิ่มหน่วย</button></div>
     <div class="tbl-wrap flat"><table class="tbl stack unit-tbl">
       <thead><tr><th>หน่วยที่</th><th class="l">ชื่อหน่วยการเรียนรู้</th><th class="l">มาตรฐาน/ตัวชี้วัด</th><th>ชม.</th><th>คะแนน</th><th title="จำนวนช่องคะแนนย่อยในหน้า 3.1">ช่องย่อย</th><th title="เกณฑ์ผ่านของหน่วย">ผ่าน %</th><th></th></tr></thead>

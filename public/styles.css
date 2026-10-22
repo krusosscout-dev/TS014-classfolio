@@ -306,7 +306,15 @@ td.fail { color: var(--bad); }
 .paper p { margin: 0 0 .2em; }
 
 /* ---------- กล่องโต้ตอบ ---------- */
-dialog.dlg { border: 0; border-radius: 20px; padding: 0; background: var(--panel); color: var(--ink); width: min(580px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); box-shadow: 0 24px 70px rgba(10, 14, 40, .35); overflow: hidden; }
+dialog.dlg { border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line)); border-radius: 22px; padding: 0; color: var(--ink); width: min(580px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, var(--panel)) 0, var(--panel) 92px) var(--panel);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent), inset 0 1px 0 rgba(255,255,255,.10), 0 30px 80px rgba(8, 10, 30, .45); }
+dialog.dlg::before { content: ""; position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, var(--h-indigo, var(--accent)), var(--h-violet, var(--accent)), var(--h-pink, var(--accent))); opacity: .9; pointer-events: none; }
+dialog.dlg .dlg-h h2 { display: flex; align-items: center; gap: 10px; }
+dialog.dlg .dlg-h h2::before { content: ""; width: 10px; height: 10px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent); flex: none; }
+dialog.dlg .dlg-h [data-x] { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; padding: 0; background: var(--panel-2); border: 1px solid var(--line); }
+dialog.dlg .dlg-h [data-x]:hover { background: color-mix(in srgb, var(--bad) 12%, var(--panel)); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 30%, var(--line)); }
+dialog.dlg .dlg-f { background: color-mix(in srgb, var(--panel-2) 60%, var(--panel)); }
 dialog.dlg[open] { display: flex; flex-direction: column; }
 dialog.dlg .dlg-b { overflow-y: auto; flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
 dialog.dlg .dlg-h, dialog.dlg .dlg-f { flex: none; }
@@ -314,7 +322,9 @@ dialog.sheet-dlg[open] { display: block; overflow-y: auto; overscroll-behavior: 
 dialog.palette[open] { display: flex; flex-direction: column; }
 @media (prefers-reduced-motion: no-preference) { dialog.dlg[open] { animation: dlgIn .18s ease-out; } }
 @keyframes dlgIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
-dialog.dlg::backdrop { background: rgba(12, 16, 40, .5); }
+dialog::backdrop { background: rgba(10, 13, 34, .42); -webkit-backdrop-filter: blur(9px) saturate(.85); backdrop-filter: blur(9px) saturate(.85); }
+@media (prefers-reduced-motion: no-preference) { dialog[open]::backdrop { animation: bdIn .2s ease-out; } }
+@keyframes bdIn { from { opacity: 0; } to { opacity: 1; } }
 .dlg-h { padding: 18px 22px 6px; display: flex; align-items: center; gap: 10px; }
 .dlg-h h2 { flex: 1; }
 .dlg-b { padding: 8px 22px 14px; display: grid; gap: 12px; }

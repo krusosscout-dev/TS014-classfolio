@@ -89,7 +89,7 @@ function defaultSettings() {
     ],
     scale: clone(Calc.DEFAULT_SCALE),
     minPct: 60, minAtt: 80, rounding: 'int', printFont: 'THSarabunPSK', v: 3,
-    convert: 'ratio', ratioMid: 70, ratioFinal: 30,
+    convert: 'ratio', ratioMid: 70, ratioFinal: 30, ratioMidP: 70, ratioFinalP: 30,
     palette: 'khram', theme: 'system',
     templates: []
   };
@@ -100,21 +100,34 @@ function newUnit(name, weight) {
 }
 
 function defaultCourse(st, over) {
-  st = st || S.settings || defaultSettings();
-  const mid = Number(st.ratioMid) || 70, fin = Number(st.ratioFinal) || 30;
+  st = st || S.settings || defaultSettings(); over = over || {};
+  /* สัดส่วนเริ่มต้นแยก ประถม / มัธยม (เลือกตามรหัสวิชา) · ส่ง over.ratio มาเองได้ */
+  const isP = (over.level && over.level !== 'auto' ? over.level : Calc.levelOf(over.code || '')) === 'ป';
+  const dm = Number(isP ? st.ratioMidP ?? st.ratioMid : st.ratioMid), df = Number(isP ? st.ratioFinalP ?? st.ratioFinal : st.ratioFinal);
+  const mid = over.ratio ? Number(over.ratio.mid) : (isNaN(dm) ? 70 : dm), fin = over.ratio ? Number(over.ratio.final) : (isNaN(df) ? 30 : df);
   const c = Object.assign({
     id: newId('c'), code: '', name: '', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', type: 'พื้นฐาน',
     grade: 'ม.1', room: '1', year: 2569, term: '1', hours: 60, credits: 1.5, teacher: st.teacher || '',
-    level: 'auto', convert: st.convert || 'ratio', ratio: { mid, final: fin },
+    level: 'auto', convert: st.convert || 'ratio',
     descHtml: '', descFont: 'THSarabunPSK', descLine: 1.35, indicators: '',
     units: [newUnit('หน่วยการเรียนรู้ที่ 1', Math.round(mid / 2)), newUnit('หน่วยการเรียนรู้ที่ 2', mid - Math.round(mid / 2)),
       { id: 'final', name: 'สอบปลายภาค', isFinal: true, indicators: '', hours: 0, weight: fin, slots: 1 }],
     students: [], tasks: [], scores: {}, attendance: {}, attr: {}, rtw: {}, comp: {}, remedial: {},
     signDate: '', log: [], createdAt: Date.now(), updatedAt: Date.now()
-  }, over || {});
+  }, over);
+  c.ratio = { mid, final: fin };
   return c;
 }
 
+/* ปรับคะแนนหน่วยระหว่างเรียนให้รวมเท่ากับสัดส่วนระหว่างเรียน (คงสัดส่วนเดิม เป็นจำนวนเต็ม) */
+function fitUnitWeights(c) {
+  const mids = (c.units || []).filter(u => !u.isFinal), target = Number(c.ratio.mid) || 0;
+  if (!mids.length) return;
+  const w = mids.map(u => Number(u.weight) || 0), sum = w.reduce((a, b) => a + b, 0);
+  const raw = sum ? w.map(x => x / sum * target) : w.map(() => target / mids.length);
+  Calc.distributeInt(raw, target).forEach((v, i) => mids[i].weight = v);
+  const fu = (c.units || []).find(u => u.isFinal); if (fu) fu.weight = Number(c.ratio.final) || 0;
+}
 function levelOfCourse(c) { return c.level && c.level !== 'auto' ? c.level : Calc.levelOf(c.code); }
 function termLabel(c) { return levelOfCourse(c) === 'ป' || c.term === 'ปี' ? 'ปีการศึกษา ' + c.year : 'ภาคเรียนที่ ' + c.term + '/' + c.year; }
 function studentName(s) { return [s.prefix, s.first].filter(Boolean).join('') + (s.last ? ' ' + s.last : ''); }

@@ -334,7 +334,9 @@ function viewSettings() {
       <div class="form-grid">
         <label class="field"><span>เกณฑ์ผ่านหน่วย (% ของคะแนนเต็ม)</span><input class="inp" type="number" data-set="minPct" value="${esc(st.minPct)}"></label>
         <label class="field"><span>เวลาเรียนขั้นต่ำ (%)</span><input class="inp" type="number" data-set="minAtt" value="${esc(st.minAtt)}"></label>
-        <label class="field"><span>สัดส่วนเริ่มต้น ระหว่าง : ปลาย</span><div class="row" style="flex-wrap:nowrap"><input class="inp" type="number" data-set="ratioMid" value="${esc(st.ratioMid)}"><span>:</span><input class="inp" type="number" data-set="ratioFinal" value="${esc(st.ratioFinal)}"></div></label>
+        <label class="field"><span>สัดส่วนเริ่มต้น ประถม (ระหว่างปี : ปลายปี)</span><div class="row" style="flex-wrap:nowrap"><input class="inp" type="number" min="0" max="100" data-set="ratioMidP" value="${esc(st.ratioMidP ?? st.ratioMid)}"><span>:</span><input class="inp" type="number" min="0" max="100" data-set="ratioFinalP" value="${esc(st.ratioFinalP ?? st.ratioFinal)}"></div></label>
+        <label class="field"><span>สัดส่วนเริ่มต้น มัธยม (ระหว่างภาค : ปลายภาค)</span><div class="row" style="flex-wrap:nowrap"><input class="inp" type="number" min="0" max="100" data-set="ratioMid" value="${esc(st.ratioMid)}"><span>:</span><input class="inp" type="number" min="0" max="100" data-set="ratioFinal" value="${esc(st.ratioFinal)}"></div></label>
+        <p class="note wide" style="grid-column:1/-1;margin:0">ใช้ตอนสร้างรายวิชาใหม่ (เลือกให้ตามรหัสวิชา) แต่ละรายวิชาเปลี่ยนเองได้ที่ <b>โครงสร้างรายวิชา</b></p>
       </div>
       <h3 style="margin:18px 0 8px">ระดับผลการเรียน 8 ระดับ</h3>
       <div class="tbl-wrap flat"><table class="tbl"><thead><tr><th>ระดับ</th><th>ช่วงคะแนน (ร้อยละ)</th><th class="l">ความหมาย</th></tr></thead><tbody>${GRADE_TABLE.map(([g, r, m]) => `<tr><td class="c"><b class="g-${g}">${g}</b></td><td class="c num">${r}</td><td>${m}</td></tr>`).join('')}</tbody></table></div>
@@ -408,6 +410,7 @@ const ACT = {
     });
   },
   unitUp(v) { const c = cur(), i = c.units.findIndex(u => u.id === v); if (i > 0) { snap(c); [c.units[i - 1], c.units[i]] = [c.units[i], c.units[i - 1]]; touch(c); render(); } },
+  fitUnits() { const c = cur(); snap(c); fitUnitWeights(c); log('ปรับคะแนนหน่วยให้รวม ' + c.ratio.mid); touch(c); render(); toast('ปรับคะแนนหน่วยให้รวมเท่ากับ ' + c.ratio.mid + ' แล้ว', { label: 'เลิกทำ', fn: undo }); },
   convert(v) { const c = cur(); snap(c); c.convert = v; log('เปลี่ยนวิธีแปลงคะแนน'); touch(c); render(); },
   dupCourse() {
     const c = cur(); const n = clone(c); n.id = newId('c'); n.code = c.code; n.name = c.name + ' (สำเนา)'; n.demo = false;
@@ -536,26 +539,44 @@ function newCourseDialog() {
     <label class="field"><span>ภาคเรียน</span><select class="inp" id="nTerm"><option value="1">1</option><option value="2">2</option><option value="ปี">ทั้งปี (ประถม)</option></select></label>
     <label class="field"><span>เวลาเรียน (ชม.)</span><input class="inp" id="nHours" type="number" value="40"></label>
     <label class="field"><span>หน่วยกิต</span><input class="inp" id="nCred" type="number" step="0.5" value="1"></label>
+    <label class="field"><span id="nMidL">คะแนนระหว่างภาค</span><input class="inp" id="nMid" type="number" min="0" max="100" value="${esc(S.settings.ratioMid)}"></label>
+    <label class="field"><span id="nFinL">คะแนนปลายภาค</span><input class="inp" id="nFin" type="number" min="0" max="100" value="${esc(S.settings.ratioFinal)}"></label>
   </div>
   ${others.length ? `<label class="field"><span>คัดลอกจากรายวิชาเดิม (ไม่คัดลอกคะแนน)</span><select class="inp" id="nFrom"><option value="">ไม่คัดลอก</option>${others.map(o => `<option value="${o.id}">${esc(o.code)} ${esc(o.name)} · ${esc(o.grade)}/${esc(o.room)} · ${esc(termLabel(o))}</option>`).join('')}</select></label>
   <div class="row small"><label class="row"><input type="checkbox" id="nCopyStu" checked> รายชื่อนักเรียน</label><label class="row"><input type="checkbox" id="nCopyStruct" checked> โครงสร้างและงาน</label><label class="row"><input type="checkbox" id="nCopyDesc" checked> คำอธิบายรายวิชา</label></div>` : ''}
   <p class="note">ตัวเลขตัวแรกของรหัสวิชา 1 = ประถม (ปพ.5 ป) 2–3 = มัธยม (ปพ.5 ต)</p>`;
-  dialog('สร้างรายวิชา', body, [{ label: 'ยกเลิก', cls: 'ghost' }, {
+  const nd = dialog('สร้างรายวิชา', body, [{ label: 'ยกเลิก', cls: 'ghost' }, {
     label: 'สร้างรายวิชา', cls: 'pri', fn: d => {
       const code = $('#nCode', d).value.trim(), name = $('#nName', d).value.trim();
       if (!code || !name) { toast('ใส่รหัสวิชาและชื่อวิชา'); return false; }
-      const c = defaultCourse(S.settings, { code, name, grade: $('#nGrade', d).value.trim() || 'ม.1', room: $('#nRoom', d).value.trim(), year: Number($('#nYear', d).value), term: $('#nTerm', d).value, hours: Number($('#nHours', d).value) || 0, credits: Number($('#nCred', d).value) || 0 });
+      const rm = Math.max(0, Math.min(100, Number($('#nMid', d).value) || 0)), rf = Number($('#nFin', d).value);
+      if (rm + rf !== 100) { toast('คะแนนระหว่างภาคกับปลายภาคต้องรวมกันได้ 100'); return false; }
+      const c = defaultCourse(S.settings, { code, name, grade: $('#nGrade', d).value.trim() || 'ม.1', room: $('#nRoom', d).value.trim(), year: Number($('#nYear', d).value), term: $('#nTerm', d).value, hours: Number($('#nHours', d).value) || 0, credits: Number($('#nCred', d).value) || 0, ratio: { mid: rm, final: rf } });
       const fromId = $('#nFrom', d) && $('#nFrom', d).value;
       if (fromId) {
         const f = S.courses.find(x => x.id === fromId);
         if ($('#nCopyStu', d).checked) c.students = clone(Calc.activeStudents(f)).map(s => (s.id = newId('s'), s));
-        if ($('#nCopyStruct', d).checked) { c.units = clone(f.units); c.tasks = clone(f.tasks).map(t => (t.id = newId('t'), t)); c.tasks.forEach(t => c.scores[t.id] = {}); c.ratio = clone(f.ratio); c.convert = f.convert; c.group = f.group; c.type = f.type; }
+        if ($('#nCopyStruct', d).checked) { c.units = clone(f.units); c.tasks = clone(f.tasks).map(t => (t.id = newId('t'), t)); c.tasks.forEach(t => c.scores[t.id] = {}); c.convert = f.convert; c.group = f.group; c.type = f.type; c.ratio = { mid: rm, final: rf }; if (rm !== Number(f.ratio.mid)) fitUnitWeights(c); else { const fu = c.units.find(u => u.isFinal); if (fu) fu.weight = rf; } }
         if ($('#nCopyDesc', d).checked) { c.descHtml = f.descHtml; c.indicators = f.indicators; c.descFont = f.descFont; c.descLine = f.descLine; }
       }
       c.log = [{ t: Date.now(), text: 'สร้างรายวิชา' + (fromId ? ' (คัดลอกจากวิชาเดิม)' : '') }];
       S.courses.push(c); S.cur = c.id; S.view = 'course'; S.tab = c.students.length ? 'book' : 'students'; touch(c); render(); toast('สร้างรายวิชาแล้ว');
     }
   }]);
+  /* เติมสัดส่วนตามระดับ (ประถม/มัธยม) จนกว่าครูจะแก้เอง */
+  let touched = false;
+  const fill = () => {
+    const code = $('#nCode', nd).value.trim(), isP = Calc.levelOf(code) === 'ป' || $('#nTerm', nd).value === 'ปี', st = S.settings;
+    $('#nMidL', nd).textContent = 'คะแนนระหว่าง' + (isP ? 'ปี' : 'ภาค'); $('#nFinL', nd).textContent = 'คะแนนปลาย' + (isP ? 'ปี' : 'ภาค');
+    const src = $('#nFrom', nd) && $('#nFrom', nd).value && $('#nCopyStruct', nd).checked ? S.courses.find(x => x.id === $('#nFrom', nd).value) : null;
+    if (touched) return;
+    const m = src ? src.ratio.mid : isP ? (st.ratioMidP ?? st.ratioMid) : st.ratioMid;
+    $('#nMid', nd).value = m; $('#nFin', nd).value = 100 - Number(m);
+  };
+  ['#nCode', '#nTerm', '#nFrom', '#nCopyStruct'].forEach(k => { const x = $(k, nd); if (x) x.addEventListener(x.tagName === 'INPUT' && x.type !== 'checkbox' ? 'input' : 'change', fill); });
+  $('#nMid', nd).addEventListener('input', () => { touched = true; const v = Math.max(0, Math.min(100, Number($('#nMid', nd).value) || 0)); $('#nFin', nd).value = 100 - v; });
+  $('#nFin', nd).addEventListener('input', () => { touched = true; const v = Math.max(0, Math.min(100, Number($('#nFin', nd).value) || 0)); $('#nMid', nd).value = 100 - v; });
+  fill();
 }
 
 /* ---------------- กล่อง: นำเข้ารายชื่อ ---------------- */
@@ -708,9 +729,19 @@ document.addEventListener('input', e => {
     if (['hours', 'weight', 'slots', 'minPct'].includes(f)) { const v = numOrBlank(el.value); if (v === null) return; u[f] = v === '' ? (f === 'minPct' ? null : 0) : v; } else u[f] = el.value;
     touch(c); return;
   }
-  if (d.ratio && c) { const v = Number(el.value) || 0; c.ratio[d.ratio] = v; const fu = c.units.find(u => u.isFinal); if (fu) fu.weight = c.ratio.final; touch(c); return; }
+  if (d.ratio && c) {
+    const v = Math.max(0, Math.min(100, Number(el.value) || 0)), other = d.ratio === 'mid' ? 'final' : 'mid';
+    c.ratio[d.ratio] = v; c.ratio[other] = 100 - v;
+    const o = $(`[data-ratio="${other}"]`); if (o) o.value = 100 - v;
+    const fu = c.units.find(u => u.isFinal); if (fu) fu.weight = c.ratio.final; touch(c); return;
+  }
   if (d.rem && c) { const [sid, f] = d.rem.split('|'); const r = (c.remedial[sid] = c.remedial[sid] || {}); r[f] = el.value; if (f === 'grade' && el.value && !r.date) r.date = new Date().toISOString().slice(0, 10); touch(c); return; }
-  if (d.set) { const v = el.type === 'number' ? Number(el.value) : el.value; S.settings[d.set] = v; touchSettings(); return; }
+  if (d.set) {
+    const v = el.type === 'number' ? Number(el.value) : el.value; S.settings[d.set] = v;
+    const pair = { ratioMid: 'ratioFinal', ratioFinal: 'ratioMid', ratioMidP: 'ratioFinalP', ratioFinalP: 'ratioMidP' }[d.set];
+    if (pair && el.value !== '') { const o = Math.max(0, 100 - v); S.settings[pair] = o; const x = $(`[data-set="${pair}"]`); if (x) x.value = o; }
+    touchSettings(); return;
+  }
   if (d.sg) { const [i, f] = d.sg.split('|'); S.settings.signers[Number(i)][f] = el.value; touchSettings(); return; }
 });
 
@@ -917,6 +948,7 @@ async function loadAll() {
   S.settings.rounding = 'int';
   S.settings.printFont = 'THSarabunPSK';
   if (!stored.v || stored.v < 3) { S.settings.v = 3; touchSettings(); }
+  if (stored.ratioMid != null && stored.ratioMidP == null) { S.settings.ratioMidP = stored.ratioMid; S.settings.ratioFinalP = stored.ratioFinal; }
   applyTheme();
   S.baseSettings = JSON.stringify(stored);
   S.courses = (await Store.listCourses()).map(normCourse);
