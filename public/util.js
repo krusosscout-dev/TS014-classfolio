@@ -6,7 +6,7 @@ const newId = (p = '') => p + Math.random().toString(36).slice(2, 8) + Date.now(
 const clone = o => JSON.parse(JSON.stringify(o));
 const thColl = new Intl.Collator('th');
 const TH_DIGITS = false;
-const APP_VERSION = 'v21';
+const APP_VERSION = 'v22';
 const APP_CREDIT = '© 2569 ClassFolio · นรากรณ์ จูงาม · สงวนลิขสิทธิ์';
 const APP_FREE = 'ใช้ได้ฟรีสำหรับครู';
 
@@ -123,13 +123,50 @@ function defaultCourse(st, over) {
 }
 
 /* ปรับคะแนนหน่วยระหว่างเรียนให้รวมเท่ากับสัดส่วนระหว่างเรียน (คงสัดส่วนเดิม เป็นจำนวนเต็ม) */
-function fitUnitWeights(c) {
+function fitUnitWeights(c, sem) {
+  if (Calc.semOn(c)) { (sem ? [Number(sem)] : [1, 2]).forEach(s => fitSemWeights(c, s)); c.ratio = Calc.semRatio(c); return; }
   const mids = (c.units || []).filter(u => !u.isFinal), target = Number(c.ratio.mid) || 0;
   if (!mids.length) return;
   const w = mids.map(u => Number(u.weight) || 0), sum = w.reduce((a, b) => a + b, 0);
   const raw = sum ? w.map(x => x / sum * target) : w.map(() => target / mids.length);
   Calc.distributeInt(raw, target).forEach((v, i) => mids[i].weight = v);
   const fu = (c.units || []).find(u => u.isFinal); if (fu) fu.weight = Number(c.ratio.final) || 0;
+}
+/* ---------- แบ่ง 2 ภาคเรียน (ประถม) ---------- */
+function semUnits(c, s) { return (c.units || []).filter(u => Calc.semOf(u) === s); }
+function semRaw(c, s) { return semUnits(c, s).reduce((a, u) => a + (Number(u.weight) || 0), 0); }
+/* ปรับหน่วยในภาคให้รวมเท่าคะแนนเต็มที่เลือก (สอบปลายปีคงเดิม) */
+function fitSemWeights(c, s) {
+  const scale = Calc.semScale(c, s), us = semUnits(c, s).filter(u => !u.isFinal && !u.isMid);
+  const fixed = semUnits(c, s).filter(u => u.isFinal || u.isMid).reduce((a, u) => a + (Number(u.weight) || 0), 0), target = Math.max(0, scale - fixed);
+  if (!us.length) return;
+  const w = us.map(u => Number(u.weight) || 0), sum = w.reduce((a, b) => a + b, 0);
+  Calc.distributeInt(sum ? w.map(x => x / sum * target) : w.map(() => target / us.length), target).forEach((v, i) => us[i].weight = v);
+}
+/* เรียงหน่วย: ภาค 1 → ภาค 2 → สอบปลายปี (คงลำดับเดิมในภาค) */
+function sortSem(c) { const k = u => u.isFinal ? 3 : Calc.semOf(u); c.units = c.units.map((u, i) => [u, i]).sort((a, b) => k(a[0]) - k(b[0]) || a[1] - b[1]).map(x => x[0]); }
+/* เปิด/ปิดการแบ่ง 2 ภาคเรียน · คะแนนจริงของนักเรียนไม่เปลี่ยน แค่จัดหน่วยเป็นภาค */
+function setSemMode(c, on) {
+  if (on) {
+    const mids = (c.units || []).filter(u => !u.isFinal), half = Math.ceil(mids.length / 2);
+    mids.forEach((u, i) => { if (u.sem !== 1 && u.sem !== 2) u.sem = i < half ? 1 : 2; });
+    const fu = (c.units || []).find(u => u.isFinal);
+    if (fu) { fu.sem = 2; fu.name = fu.name.replace('สอบปลายภาค', 'สอบปลายปี'); if (!(Number(fu.weight) > 0 && Number(fu.weight) < 50)) fu.weight = Math.min(20, Number(c.ratio.final) || 20); }
+    c.sem = { on: true, scale: Object.assign({ 1: 50, 2: 50 }, (c.sem && c.sem.scale) || {}) }; sortSem(c);
+    [1, 2].forEach(s => { if (semRaw(c, s) !== Calc.semScale(c, s)) fitSemWeights(c, s); });
+    c.ratio = Calc.semRatio(c);
+  } else {
+    const w = Calc.effWeights(c); (c.units || []).forEach(u => u.weight = w[u.id]);
+    c.ratio = Calc.semRatio(c); c.sem = Object.assign({}, c.sem, { on: false });
+  }
+}
+/* เปลี่ยนคะแนนเต็มของภาค 50 ↔ 100 โดยคะแนนจริงเท่าเดิม */
+function setSemScale(c, s, scale) {
+  const old = Calc.semScale(c, s); if (old === scale) return;
+  semUnits(c, s).forEach(u => u.weight = Math.round((Number(u.weight) || 0) * scale / old * 100) / 100);
+  c.sem.scale[s] = scale;
+  if (semRaw(c, s) !== scale) fitSemWeights(c, s);
+  c.ratio = Calc.semRatio(c);
 }
 /* ชื่อไฟล์ที่ดาวน์โหลด: ใช้ได้ทุกระบบปฏิบัติการ (ตัดอักขระต้องห้าม / \ : * ? " < > |) */
 function safeFile(s) { return String(s || '').replace(/[\/\\:*?"<>|]+/g, '-').replace(/\s+/g, ' ').replace(/^[\s.-]+|[\s.-]+$/g, '').slice(0, 120) || 'ClassFolio'; }
@@ -147,6 +184,7 @@ function unitNo(c, u) { return (c.units || []).filter(x => !x.isFinal && !x.isMi
 function unitTag(c, u, form) {
   const t = levelOfCourse(c) === 'ป' || c.term === 'ปี' ? 'ปี' : 'ภาค';
   if (u.isFinal) return { short: 'ปลาย', long: 'ปลาย' + t, th: u.name, no: '' }[form];
+  if (u.isMid && Calc.semOn(c)) return { short: 'สอบ ภ.' + Calc.semOf(u), long: 'สอบ', th: u.name, no: '' }[form];
   if (u.isMid) return { short: 'กลาง', long: 'กลาง' + t, th: u.name, no: '' }[form];
   const n = unitNo(c, u); return { short: 'น.' + n, long: 'หน่วย ' + n, th: 'หน่วยที่ ' + n, no: n }[form];
 }

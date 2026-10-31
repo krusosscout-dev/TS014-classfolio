@@ -13,6 +13,7 @@ function applyTheme() {
 function log(text) { const c = cur(); if (!c) return; c.log = (c.log || []).concat({ t: Date.now(), text }).slice(-300); }
 function touch(c) {
   c = c || cur(); if (!c) return;
+  if (Calc.semOn(c)) c.ratio = Calc.semRatio(c);
   S.dirty.add(c.id); S.saveState = 'saving'; pill();
   clearTimeout(S.timer); S.timer = setTimeout(flush, 700);
 }
@@ -443,7 +444,12 @@ const ACT = {
     });
   },
   unitUp(v) { const c = cur(), i = c.units.findIndex(u => u.id === v); if (i > 0) { snap(c); [c.units[i - 1], c.units[i]] = [c.units[i], c.units[i - 1]]; touch(c); render(); } },
-  fitUnits() { const c = cur(); snap(c); fitUnitWeights(c); log('ปรับคะแนนหน่วยให้รวม ' + c.ratio.mid); touch(c); render(); toast('ปรับคะแนนหน่วยให้รวมเท่ากับ ' + c.ratio.mid + ' แล้ว', { label: 'เลิกทำ', fn: undo }); },
+  semOn() { const c = cur(); snap(c); setSemMode(c, true); log('แบ่งคะแนน 2 ภาคเรียน ภาคละ 50'); touch(c); render(); toast('แบ่งคะแนนเป็น 2 ภาคเรียนแล้ว ตรวจหน่วยในแต่ละภาคด้านล่าง', { label: 'เลิกทำ', fn: undo }); },
+  semOff() { const c = cur(); snap(c); setSemMode(c, false); log('ยกเลิกการแบ่ง 2 ภาคเรียน'); touch(c); render(); toast('รวมเป็นคะแนนทั้งปีแล้ว', { label: 'เลิกทำ', fn: undo }); },
+  semScale(v) { const [s, sc] = v.split('|').map(Number); const c = cur(); snap(c); setSemScale(c, s, sc); log('ภาคเรียนที่ ' + s + ' เก็บเต็ม ' + sc); touch(c); render(); },
+  semMove(v) { const c = cur(), u = c.units.find(x => x.id === v); if (!u || u.isFinal) return; snap(c); u.sem = Calc.semOf(u) === 1 ? 2 : 1; sortSem(c); touch(c); render(); toast('ย้ายไปภาคเรียนที่ ' + u.sem + ' แล้ว'); },
+  semAdd(v) { const c = cur(), exam = String(v).endsWith('x'), s = parseInt(v, 10); snap(c); const u = newUnit(exam ? 'สอบปลายภาค ' + s : 'หน่วยการเรียนรู้ที่ ' + (c.units.filter(x => !x.isFinal && !x.isMid).length + 1), 0); u.sem = s; if (exam) { u.isMid = true; u.slots = 1; const t = { id: newId('t'), name: u.name, full: 20, unit: u.id, weight: 1, bonus: false }; c.tasks.push(t); c.scores[t.id] = {}; } c.units.push(u); sortSem(c); touch(c); render(); },
+  fitUnits(v) { const c = cur(); snap(c); fitUnitWeights(c, v); if (Calc.semOn(c)) { log('ปรับคะแนนหน่วยภาคเรียนที่ ' + v); touch(c); render(); toast('ปรับคะแนนหน่วยในภาคเรียนที่ ' + v + ' ให้รวม ' + Calc.semScale(c, Number(v)) + ' แล้ว', { label: 'เลิกทำ', fn: undo }); return; } log('ปรับคะแนนหน่วยให้รวม ' + c.ratio.mid); touch(c); render(); toast('ปรับคะแนนหน่วยให้รวมเท่ากับ ' + c.ratio.mid + ' แล้ว', { label: 'เลิกทำ', fn: undo }); },
   convert(v) { const c = cur(); snap(c); c.convert = v; log('เปลี่ยนวิธีแปลงคะแนน'); touch(c); render(); },
   dupCourse() {
     const c = cur(); const n = clone(c); n.id = newId('c'); n.code = c.code; n.name = c.name + ' (สำเนา)'; n.demo = false;
@@ -592,7 +598,7 @@ function newCourseDialog() {
       if (fromId) {
         const f = S.courses.find(x => x.id === fromId);
         if ($('#nCopyStu', d).checked) c.students = clone(Calc.activeStudents(f)).map(s => (s.id = newId('s'), s));
-        if ($('#nCopyStruct', d).checked) { c.units = clone(f.units); c.tasks = clone(f.tasks).map(t => (t.id = newId('t'), t)); c.tasks.forEach(t => c.scores[t.id] = {}); c.convert = f.convert; c.group = f.group; c.type = f.type; c.ratio = { mid: rm, final: rf }; if (rm !== Number(f.ratio.mid)) fitUnitWeights(c); else { const fu = c.units.find(u => u.isFinal); if (fu) fu.weight = rf; } }
+        if ($('#nCopyStruct', d).checked) { c.units = clone(f.units); c.tasks = clone(f.tasks).map(t => (t.id = newId('t'), t)); c.tasks.forEach(t => c.scores[t.id] = {}); c.convert = f.convert; c.group = f.group; c.type = f.type; if (f.sem && f.sem.on) c.sem = clone(f.sem); c.ratio = { mid: rm, final: rf }; if (Calc.semOn(c)) c.ratio = Calc.semRatio(c); else if (rm !== Number(f.ratio.mid)) fitUnitWeights(c); else { const fu = c.units.find(u => u.isFinal); if (fu) fu.weight = rf; } }
         if ($('#nCopyDesc', d).checked) { c.descHtml = f.descHtml; c.indicators = f.indicators; c.descFont = f.descFont; c.descLine = f.descLine; }
       }
       const rk = rosterFind(c.grade, c.room), copied = fromId && $('#nCopyStu', d) && $('#nCopyStu', d).checked;

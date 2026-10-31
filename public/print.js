@@ -72,11 +72,11 @@ const Print = (function () {
 
   function p3(c, st, o) {
     const units = c.units || [];
-    const tw = units.reduce((a, u) => a + (Number(u.weight) || 0), 0);
+    const ew = Calc.effWeights(c), tw = units.reduce((a, u) => a + (ew[u.id] || 0), 0);
     const th = units.reduce((a, u) => a + (Number(u.hours) || 0), 0);
     const body = `<h2 class="doc">โครงสร้างรายวิชา ${esc(c.name)} รหัสวิชา ${esc(c.code)}</h2>
       <table class="pt"><thead><tr><th style="width:12mm">หน่วยที่</th><th>ชื่อหน่วยการเรียนรู้</th><th>มาตรฐาน/ตัวชี้วัด</th><th style="width:16mm">เวลา (ชม.)</th><th style="width:18mm">น้ำหนักคะแนน</th></tr></thead>
-      <tbody>${units.map((u, i) => `<tr><td class="n">${unitTag(c, u, 'no')}</td><td>${esc(u.name)}</td><td>${esc(u.indicators).replace(/\n/g, '<br>')}</td><td class="n">${esc(u.hours || '')}</td><td class="n">${esc(u.weight)}</td></tr>`).join('')}
+      <tbody>${units.map((u, i) => `${Calc.semOn(c) && (i === 0 || Calc.semOf(units[i - 1]) !== Calc.semOf(u)) ? `<tr><td colspan="5"><b>ภาคเรียนที่ ${Calc.semOf(u)}</b> (50 คะแนน)</td></tr>` : ''}<tr><td class="n">${unitTag(c, u, 'no')}</td><td>${esc(u.name)}</td><td>${esc(u.indicators).replace(/\n/g, '<br>')}</td><td class="n">${esc(u.hours || '')}</td><td class="n">${esc(ew[u.id])}</td></tr>`).join('')}
       <tr><td colspan="3" class="c"><b>รวมตลอด${levelOfCourse(c) === 'ป' ? 'ปี' : 'ภาคเรียน'}</b></td><td class="n"><b>${th}</b></td><td class="n"><b>${tw}</b></td></tr></tbody></table>
       <p style="margin-top:3mm">อัตราส่วนคะแนนระหว่างเรียน : ปลาย${levelOfCourse(c) === 'ป' ? 'ปี' : 'ภาค'} = ${esc(c.ratio.mid)} : ${esc(c.ratio.final)}</p>`;
     return sheet(c, st, o, '3', body);
@@ -99,7 +99,7 @@ const Print = (function () {
       chunk(studs, 24).forEach((part, pi, all) => {
         const head1 = grp.map(p => `<th colspan="${p.plan.slots.length + 1}">${esc(p.u.name)}</th>`).join('') + (last ? '<th rowspan="3">รวม<br>ระหว่าง<br>เรียน</th>' : '');
         const head2 = grp.map(p => p.plan.slots.map((s, i) => `<th>${i + 1}</th>`).join('') + '<th>รวม</th>').join('');
-        const head3 = grp.map(p => Calc.slotMaxes(c, p.u, rmode).map(m => `<th>${f(m, rmode)}</th>`).join('') + `<th>${esc(p.u.weight)}</th>`).join('');
+        const head3 = grp.map(p => Calc.slotMaxes(c, p.u, rmode).map(m => `<th>${f(m, rmode)}</th>`).join('') + `<th>${esc(Calc.effW(c, p.u))}</th>`).join('');
         const rows = part.map(s => {
           const r = res[s.id];
           const cells = grp.map(p => {
@@ -184,7 +184,7 @@ const Print = (function () {
     const units = c.units || [];
     const rm = st.rounding;
     const head = `<tr><th rowspan="2" style="width:10mm">เลขที่</th><th rowspan="2">ชื่อ - สกุล</th>${units.map((u, i) => `<th><div class="vt">${unitTag(c, u, 'th') === u.name ? esc(u.name) : unitTag(c, u, 'th')}</div></th>`).join('')}<th><div class="vt">ระหว่างเรียน</div></th><th><div class="vt">รวม</div></th><th rowspan="2" style="width:13mm">ระดับ<br>ผลการ<br>เรียน</th></tr>
-      <tr>${units.map(u => `<th>${esc(u.weight)}</th>`).join('')}<th>${esc(c.ratio.mid)}</th><th>100</th></tr>`;
+      <tr>${units.map(u => `<th>${esc(Calc.effW(c, u))}</th>`).join('')}<th>${esc(c.ratio.mid)}</th><th>100</th></tr>`;
     return studentTable(c, st, o, '5', 'บันทึกผลการเรียน', head, s => {
       const r = Calc.studentResult(c, s.id, st);
       return `<tr><td class="n">${s.no}</td><td>${esc(studentName(s))}</td>${r.units.map(x => `<td class="n">${f(x.score, rm)}</td>`).join('')}<td class="n">${f(r.mid, rm)}</td><td class="n"><b>${f(r.total, rm)}</b></td><td class="c"><b>${r.grade}</b></td></tr>`;

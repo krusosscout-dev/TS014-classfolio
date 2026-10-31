@@ -42,6 +42,26 @@
     return (c.students || []).filter(s => s.status !== 'out').sort((a, b) => (a.no || 0) - (b.no || 0));
   }
 
+  /* แบ่ง 2 ภาคเรียน (วิชาประถม ตัดสินรายปี): แต่ละภาคเก็บเต็ม 50 หรือ 100 แล้วแปลงเป็น 50 ของทั้งปี
+     c.sem = { on: true, scale: { 1: 50|100, 2: 50|100 } } · หน่วยมี u.sem = 1|2 (สอบปลายปี isFinal อยู่ภาค 2) */
+  function semOn(c) { return !!(c && c.sem && c.sem.on); }
+  function semOf(u) { return u.isFinal ? 2 : Number(u.sem) === 2 ? 2 : 1; }
+  function semScale(c, s) { const v = Number(c.sem && c.sem.scale && c.sem.scale[s]); return v === 100 ? 100 : 50; }
+  /* น้ำหนักจริงหลังแปลง (จำนวนเต็ม รวมภาคละ 50 พอดี) */
+  function effWeights(c) {
+    const m = {};
+    if (!semOn(c)) { (c.units || []).forEach(u => m[u.id] = Number(u.weight) || 0); return m; }
+    [1, 2].forEach(s => {
+      const us = (c.units || []).filter(u => semOf(u) === s), k = 50 / semScale(c, s);
+      const raw = us.map(u => (Number(u.weight) || 0) * k), sum = raw.reduce((a, b) => a + b, 0);
+      const ints = Math.abs(sum - Math.round(sum)) < 1e-9 ? distributeInt(raw, Math.round(sum)) : raw;
+      us.forEach((u, i) => m[u.id] = ints[i]);
+    });
+    return m;
+  }
+  function effW(c, u) { return effWeights(c)[u.id] ?? (Number(u.weight) || 0); }
+  function semRatio(c) { const w = effWeights(c), fin = (c.units || []).filter(u => u.isFinal).reduce((a, u) => a + (w[u.id] || 0), 0); return { mid: 100 - fin, final: fin }; }
+
   function unitTasks(c, unitId) {
     return (c.tasks || []).filter(t => t.unit === unitId);
   }
@@ -60,7 +80,7 @@
         ? (wSum ? (Number(t.weight) || 1) / wSum : 0)
         : (fullSum ? (Number(t.full) || 0) / fullSum : 0);
       slots[k].tasks.push(t);
-      slots[k].max += share * (Number(u.weight) || 0);
+      slots[k].max += share * effW(c, u);
     });
     return { slots, fullSum, wSum, mode };
   }
@@ -68,7 +88,7 @@
   /* คะแนนหน่วยหลังแปลง + คะแนนรายช่อง */
   function unitResult(c, u, sid) {
     const plan = slotPlan(c, u);
-    const W = Number(u.weight) || 0;
+    const W = effW(c, u);
     const missing = [];
     let hasAny = false;
     const slotScores = plan.slots.map(sl => {
@@ -137,7 +157,7 @@
   }
   function slotMaxes(c, u, rmode) {
     const m = slotPlan(c, u).slots.map(s => s.max);
-    return rmode === 'int' ? distributeInt(m, Number(u.weight) || 0) : m;
+    return rmode === 'int' ? distributeInt(m, effW(c, u)) : m;
   }
 
   function studentResult(c, sid, settings) {
@@ -167,7 +187,8 @@
     else if (missing.length) grade = 'ร';
     else grade = projected;
     const failedUnits = units.filter(r => r.pass === false).map(r => r.unit);
-    return { units, mid: round(mid, rmode), fin: round(fin, rmode), total, missing, att, grade, projected, failedUnits };
+    const sem = semOn(c) ? [1, 2].map(s => round(units.filter(r => semOf(r.unit) === s).reduce((a, r) => a + (r.score || 0), 0), rmode)) : null;
+    return { units, mid: round(mid, rmode), fin: round(fin, rmode), total, missing, att, grade, projected, failedUnits, sem };
   }
 
   /* ต้องได้คะแนนปลายภาค (คะแนนดิบ) เท่าไรจึงถึงเกรดเป้าหมาย */
@@ -178,7 +199,7 @@
     const r = studentResult(c, sid, settings);
     const finU = (c.units || []).find(u => u.isFinal);
     if (!finU) return null;
-    const finW = Number(finU.weight) || 0;
+    const finW = effW(c, finU);
     const need = step.min - r.mid;
     if (need <= 0) return { raw: 0, scaled: 0, possible: true };
     const fts = unitTasks(c, finU.id).filter(t => !t.bonus);
@@ -226,6 +247,6 @@
 
   g.Calc = {
     DEFAULT_SCALE, LEVEL_NAMES, num, round, fmt, levelOf, gradeOf, activeStudents, unitTasks,
-    ABSENT_STATUS, slotPlan, slotMaxes, distributeInt, unitResult, attendance, studentResult, neededFinal, levelFromValues, summary
+    ABSENT_STATUS, semOn, semOf, semScale, effWeights, effW, semRatio, slotPlan, slotMaxes, distributeInt, unitResult, attendance, studentResult, neededFinal, levelFromValues, summary
   };
 })(typeof window !== 'undefined' ? window : globalThis);

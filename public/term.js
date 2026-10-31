@@ -71,7 +71,7 @@ function startNextTerm(f, over, opt) {
   if (rk && rk.students.length) c.students = courseStudentsFromRoster(rk);
   else if (opt.stu) c.students = clone(Calc.activeStudents(f)).map((s, i) => Object.assign(s, { id: newId('s'), no: i + 1, status: 'active' }));
   if (opt.struct) {
-    c.units = clone(f.units); c.ratio = clone(f.ratio); c.convert = f.convert;
+    c.units = clone(f.units); c.ratio = clone(f.ratio); c.convert = f.convert; if (f.sem) c.sem = clone(f.sem);
     c.tasks = clone(f.tasks || []).map(x => { x.id = newId('t'); delete x.due; return x; });
     c.tasks.forEach(x => c.scores[x.id] = {});
   }

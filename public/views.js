@@ -4,8 +4,9 @@ function nameCell(s) { return `<span class="nm1">${esc([s.prefix, s.first].filte
 function checkPages(c) {
   const st = S.settings, studs = Calc.activeStudents(c);
   const units = c.units || [];
-  const midSum = units.filter(u => !u.isFinal).reduce((a, u) => a + (Number(u.weight) || 0), 0);
-  const tot = units.reduce((a, u) => a + (Number(u.weight) || 0), 0);
+  const ew = Calc.effWeights(c);
+  const midSum = units.filter(u => !u.isFinal).reduce((a, u) => a + (ew[u.id] || 0), 0);
+  const tot = units.reduce((a, u) => a + (ew[u.id] || 0), 0);
   const res = studs.map(s => Calc.studentResult(c, s.id, st));
   const missingStu = res.filter(r => r.missing.length).length;
   const assessDone = k => studs.filter(s => { const v = (c[k] || {})[s.id] || []; return ASSESS[k].items.every((_, i) => v[i] !== undefined && v[i] !== '' && v[i] !== null); }).length;
@@ -161,8 +162,8 @@ function viewBook(c) {
   if (!studs.length) return `<div class="card empty"><h3>ยังไม่มีรายชื่อนักเรียน</h3><p>เพิ่มหรือวางรายชื่อจาก Excel ก่อน แล้วจึงกรอกคะแนน</p><button class="btn pri" data-act="tab" data-v="students">${ico('users')} ไปที่รายชื่อนักเรียน</button></div>`;
   const spans = []; cols.forEach(cl => { const l = spans[spans.length - 1]; if (l && l.u === cl.u) l.n++; else spans.push({ u: cl.u, n: 1 }); });
   const rm = S.settings.rounding;
-  const head1 = `<tr><th class="sticky-l" rowspan="2">เลขที่</th><th class="sticky-l2" rowspan="2">ชื่อ - สกุล</th>${spans.map(sp => `<th class="unit-h" data-hue="${sp.u.isFinal ? 'rose' : sp.u.isMid ? 'amber' : ['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][units.indexOf(sp.u) % 7]}" colspan="${sp.n}">${esc(sp.u.isFinal || sp.u.isMid ? sp.u.name : unitTag(c, sp.u, 'long') + ' · ' + sp.u.name)}</th>`).join('')}<th class="unit-h" data-hue="indigo" colspan="${units.length + 2}">แปลงเป็นคะแนน ปพ.5 (จำนวนเต็ม)</th><th rowspan="2">ระดับ</th></tr>`;
-  const head2 = `<tr>${cols.map(({ t }) => `<th class="task-h" data-act="task" data-v="${t.id}" title="${esc(t.name)} · คลิกเพื่อแก้ไข"><span class="tn">${esc(t.name)}</span><span class="sub">${t.auto === 'bonus' ? '<span class="bonus">จาก Live Class</span>' : (t.bonus ? '<span class="bonus">+พิเศษ</span> ' : '') + 'เต็ม ' + esc(t.full)}${t.due ? '<br>ส่ง ' + esc(thaiDate(t.due).split(' ').slice(0, 2).join(' ')) : ''}</span></th>`).join('')}${units.map(u => `<th>${unitTag(c, u, 'short')}<span class="sub">${esc(u.weight)}</span></th>`).join('')}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th></tr>`;
+  const head1 = `<tr><th class="sticky-l" rowspan="2">เลขที่</th><th class="sticky-l2" rowspan="2">ชื่อ - สกุล</th>${spans.map(sp => `<th class="unit-h" data-hue="${sp.u.isFinal ? 'rose' : sp.u.isMid ? 'amber' : ['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][units.indexOf(sp.u) % 7]}" colspan="${sp.n}">${esc(sp.u.isFinal || sp.u.isMid ? sp.u.name : unitTag(c, sp.u, 'long') + ' · ' + sp.u.name)}</th>`).join('')}<th class="unit-h" data-hue="indigo" colspan="${units.length + 2 + (Calc.semOn(c) ? 2 : 0)}">แปลงเป็นคะแนน ปพ.5 (จำนวนเต็ม)</th><th rowspan="2">ระดับ</th></tr>`;
+  const head2 = `<tr>${cols.map(({ t }) => `<th class="task-h" data-act="task" data-v="${t.id}" title="${esc(t.name)} · คลิกเพื่อแก้ไข"><span class="tn">${esc(t.name)}</span><span class="sub">${t.auto === 'bonus' ? '<span class="bonus">จาก Live Class</span>' : (t.bonus ? '<span class="bonus">+พิเศษ</span> ' : '') + 'เต็ม ' + esc(t.full)}${t.due ? '<br>ส่ง ' + esc(thaiDate(t.due).split(' ').slice(0, 2).join(' ')) : ''}</span></th>`).join('')}${units.map(u => `<th>${unitTag(c, u, 'short')}<span class="sub">${esc(u.weight)}</span></th>`).join('')}${Calc.semOn(c) ? '<th>ภาค 1<span class="sub">50</span></th><th>ภาค 2<span class="sub">50</span></th>' : ''}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th></tr>`;
   const rows = studs.map((s, r) => {
     const cells = cols.map(({ t }, ci) => {
       const v = (c.scores[t.id] || {})[s.id];
@@ -172,7 +173,7 @@ function viewBook(c) {
     }).join('');
     return `<tr data-row="${s.id}"><td class="sticky-l n">${s.no}</td><td class="sticky-l2">${nameCell(s)}</td>${cells}${calcCells(c, s.id, rm)}</tr>`;
   }).join('');
-  const foot = `<tr><td class="sticky-l"></td><td class="sticky-l2 muted">ค่าเฉลี่ย</td>${cols.map(({ t }) => `<td class="n muted" data-avg="${t.id}">${avgTask(c, t)}</td>`).join('')}<td colspan="${units.length + 3}"></td></tr>`;
+  const foot = `<tr><td class="sticky-l"></td><td class="sticky-l2 muted">ค่าเฉลี่ย</td>${cols.map(({ t }) => `<td class="n muted" data-avg="${t.id}">${avgTask(c, t)}</td>`).join('')}<td colspan="${units.length + 3 + (Calc.semOn(c) ? 2 : 0)}"></td></tr>`;
   return `
   <div class="card bar">
     <div class="row">
@@ -186,7 +187,7 @@ function viewBook(c) {
 function calcCells(c, sid, rm) {
   const r = Calc.studentResult(c, sid, S.settings);
   return r.units.map(x => `<td class="calc${x.pass === false ? ' fail' : ''}" data-cc="${x.unit.id}">${Calc.fmt(x.score, rm)}</td>`).join('') +
-    `<td class="calc" data-cc="mid">${Calc.fmt(r.mid, rm)}</td><td class="calc" data-cc="total">${Calc.fmt(r.total, rm)}</td><td class="grade g-${r.grade}" data-cc="grade" title="${r.grade === 'ร' ? 'งานค้าง ' + r.missing.length + ' ชิ้น · ถ้าคิดตามคะแนนที่มีได้ ' + r.projected : ''}">${r.grade}</td>`;
+    (r.sem ? r.sem.map((v, i) => `<td class="calc sem-c" data-cc="sem${i + 1}">${Calc.fmt(v, rm)}</td>`).join('') : '') + `<td class="calc" data-cc="mid">${Calc.fmt(r.mid, rm)}</td><td class="calc" data-cc="total">${Calc.fmt(r.total, rm)}</td><td class="grade g-${r.grade}" data-cc="grade" title="${r.grade === 'ร' ? 'งานค้าง ' + r.missing.length + ' ชิ้น · ถ้าคิดตามคะแนนที่มีได้ ' + r.projected : ''}">${r.grade}</td>`;
 }
 function avgTask(c, t) {
   const v = Calc.activeStudents(c).map(s => Calc.num((c.scores[t.id] || {})[s.id])).filter(x => x !== null);
@@ -199,6 +200,7 @@ function updateBookRow(c, sid) {
   const r = Calc.studentResult(c, sid, S.settings);
   r.units.forEach(x => { const td = tr.querySelector(`[data-cc="${x.unit.id}"]`); if (td) { td.textContent = Calc.fmt(x.score, rm); td.classList.toggle('fail', x.pass === false); } });
   const set = (k, v) => { const td = tr.querySelector(`[data-cc="${k}"]`); if (td) td.textContent = v; };
+  if (r.sem) r.sem.forEach((v, i) => set('sem' + (i + 1), Calc.fmt(v, rm)));
   set('mid', Calc.fmt(r.mid, rm)); set('total', Calc.fmt(r.total, rm));
   const g = tr.querySelector('[data-cc="grade"]'); if (g) { g.textContent = r.grade; g.className = 'grade g-' + r.grade; }
 }
@@ -227,15 +229,16 @@ function viewStructure(c) {
   </div>
   <div class="card">
     <div class="card-h"><h2>สัดส่วนคะแนนและการแปลงคะแนน</h2><span class="chip acc">เฉพาะรายวิชานี้</span></div>
+    ${lv === 'ป' || c.term === 'ปี' ? semPanel(c) : ''}
     <div class="form-grid">
-      <label class="field"><span>ระหว่างเรียน</span><input class="inp" type="number" data-ratio="mid" value="${esc(c.ratio.mid)}" min="0" max="100"></label>
-      <label class="field"><span>ปลาย${lv === 'ป' ? 'ปี' : 'ภาค'}</span><input class="inp" type="number" data-ratio="final" value="${esc(c.ratio.final)}" min="0" max="100"></label>
+      ${Calc.semOn(c) ? `<div class="field"><span>ระหว่างปี : ปลายปี (คำนวณจากหน่วย)</span><b class="num" style="font-size:1.25rem;padding:6px 2px">${esc(c.ratio.mid)} : ${esc(c.ratio.final)}</b></div>` : `<label class="field"><span>ระหว่างเรียน</span><input class="inp" type="number" data-ratio="mid" value="${esc(c.ratio.mid)}" min="0" max="100"></label>
+      <label class="field"><span>ปลาย${lv === 'ป' ? 'ปี' : 'ภาค'}</span><input class="inp" type="number" data-ratio="final" value="${esc(c.ratio.final)}" min="0" max="100"></label>`}
       <div class="field wide"><span>วิธีแปลงสมุดคะแนนดิบเป็นคะแนนหน่วย</span><div class="seg"><button data-act="convert" data-v="ratio" class="${c.convert !== 'weighted' ? 'on' : ''}">ตามสัดส่วนคะแนนรวม</button><button data-act="convert" data-v="weighted" class="${c.convert === 'weighted' ? 'on' : ''}">กำหนดน้ำหนักรายงาน</button></div></div>
     </div>
     <p class="note" style="margin-top:10px">${c.convert === 'weighted' ? 'แต่ละงานมีน้ำหนักของตัวเอง เช่น สอบ 2 ส่วน ใบงาน 1 ส่วน ตั้งน้ำหนักได้ที่หัวคอลัมน์ในสมุดคะแนน' : 'รวมคะแนนดิบทุกงานในหน่วย แล้วเทียบสัดส่วนกับคะแนนหน่วย เช่น ได้ 80 จาก 100 ในหน่วยที่มี 10 คะแนน = 8'}</p>
     ${ratioOk ? '' : `<div class="badbox" style="margin-top:10px">ระหว่างเรียนกับปลายภาคต้องรวมกันได้ 100 (ตอนนี้ ${Number(c.ratio.mid) + Number(c.ratio.final)})</div>`}
   </div>
-  <div class="card">
+  ${Calc.semOn(c) ? semUnitsCard(c) : `  <div class="card">
     <div class="card-h"><h2>หน่วยการเรียนรู้และน้ำหนักคะแนน</h2>
       <span class="chip ${midSum === Number(c.ratio.mid) ? 'ok' : 'warn'}">ระหว่างเรียน ${midSum}/${esc(c.ratio.mid)}</span>${midSum !== Number(c.ratio.mid) && mids.length ? `<button class="btn sm" data-act="fitUnits" title="คงสัดส่วนระหว่างหน่วยไว้เหมือนเดิม">${ico('bolt')} ปรับให้รวม ${esc(c.ratio.mid)} อัตโนมัติ</button>` : ''}
       <button class="btn" data-act="addUnit">${ico('plus')} เพิ่มหน่วย</button>${units.some(u => u.isMid) ? '' : `<button class="btn" data-act="addMid">${ico('plus')} เพิ่มสอบกลาง${lv === 'ป' ? 'ปี' : 'ภาค'}</button>`}</div>
@@ -252,10 +255,47 @@ function viewStructure(c) {
         <td class="st-del" style="white-space:nowrap">${u.isFinal ? '' : `<button class="btn sm ghost" data-act="unitUp" data-v="${u.id}" aria-label="เลื่อนขึ้น">↑</button><button class="btn sm ghost danger" data-act="delUnit" data-v="${u.id}" aria-label="ลบหน่วย">${ico('trash')}</button>`}</td>
       </tr>`).join('')}</tbody></table></div>
     <p class="note" style="margin-top:8px">ช่องย่อย = จำนวนช่องคะแนนในหน้า 3.1 (1–10) เว้นว่างให้ระบบใช้ตามจำนวนงาน · ผ่าน % เว้นว่างใช้เกณฑ์กลาง ${esc(S.settings.minPct)}%</p>
-  </div>
+  </div>`}
   <div class="card">
     <div class="card-h"><h3>จัดการรายวิชา</h3></div>
     <div class="row"><button class="btn" data-act="dupCourse">${ico('copy')} คัดลอกเป็นรายวิชาใหม่</button>${c.archived ? `<button class="btn" data-act="unarchive">${ico('undo')} นำกลับมาใช้งาน</button>` : `<button class="btn" data-act="newTerm">${ico('calendar')} เริ่มภาคเรียนใหม่</button><button class="btn" data-act="archive">${ico('book')} ย้ายเข้าคลังภาคเรียนเก่า</button>`}<button class="btn danger" data-act="delCourse">${ico('trash')} ลบรายวิชานี้</button></div>
+  </div>`;
+}
+
+/* ---------- ประถม: แบ่ง 2 ภาคเรียน ภาคละ 50 ---------- */
+function semPanel(c) {
+  if (!Calc.semOn(c)) return `<div class="sem-off"><div><b>แบ่งคะแนนเป็น 2 ภาคเรียน (ภาคละ 50)</b><small>สำหรับวิชาประถมที่ตัดสินรายปี แต่ละภาคเลือกได้ว่าจะเก็บเต็ม 50 หรือเก็บเต็ม 100 แล้วให้ระบบหารเหลือ 50</small></div><button class="btn pri" data-act="semOn">${ico('layers')} เปิดใช้</button></div>`;
+  return `<div class="sem-panel">${[1, 2].map(s => { const sc = Calc.semScale(c, s); return `<div class="sem-box" data-hue="${s === 1 ? 'teal' : 'violet'}">
+      <b>ภาคเรียนที่ ${s}</b>
+      <div class="seg"><button data-act="semScale" data-v="${s}|50" class="${sc === 50 ? 'on' : ''}">เก็บเต็ม 50</button><button data-act="semScale" data-v="${s}|100" class="${sc === 100 ? 'on' : ''}">เก็บเต็ม 100 ÷ 2</button></div>
+      <small>${sc === 100 ? 'ตั้งคะแนนหน่วยรวม 100 ระบบหารครึ่งเป็น 50 ให้เอง' : 'ตั้งคะแนนหน่วยรวม 50 ใช้ตามนั้นเลย'}</small></div>`; }).join('')}
+    <div class="sem-sum"><span>ภาค 1</span><b>50</b><span>+</span><span>ภาค 2</span><b>50</b><span>=</span><b class="t">100</b><button class="btn sm ghost" data-act="semOff" title="รวมเป็นคะแนนทั้งปีแบบเดิม">ยกเลิกการแบ่งภาค</button></div></div>`;
+}
+function semUnitsCard(c) {
+  const w = Calc.effWeights(c);
+  const row = u => { const s = Calc.semOf(u), sc = Calc.semScale(c, s); return `<tr>
+    <td class="n st-no" data-label="หน่วยที่">${unitTag(c, u, 'long')}</td>
+    <td class="wide" data-label="ชื่อหน่วยการเรียนรู้"><input class="inp t" data-u="${u.id}|name" value="${esc(u.name)}" style="min-width:200px"></td>
+    <td class="wide" data-label="มาตรฐาน/ตัวชี้วัด"><textarea class="inp t" data-u="${u.id}|indicators" rows="1" style="min-width:200px;min-height:34px">${esc(u.indicators)}</textarea></td>
+    <td data-label="ชั่วโมง"><input class="cell w" data-u="${u.id}|hours" value="${esc(u.hours)}" inputmode="decimal"></td>
+    <td class="c" data-label="คะแนน"><input class="cell w" data-u="${u.id}|weight" value="${esc(u.weight)}" inputmode="decimal">${sc === 100 ? `<span class="sem-eff" title="คะแนนจริงหลังหารครึ่ง">→ ${w[u.id]}</span>` : ''}</td>
+    <td data-label="ช่องย่อย"><input class="cell w" data-u="${u.id}|slots" value="${u.slots || ''}" placeholder="${Math.min(Calc.unitTasks(c, u.id).length, 10) || 1}" inputmode="numeric"></td>
+    <td data-label="ผ่าน %"><input class="cell w" data-u="${u.id}|minPct" value="${u.minPct ?? ''}" placeholder="${esc(S.settings.minPct)}" inputmode="decimal"></td>
+    <td class="st-del" style="white-space:nowrap">${u.isFinal ? '' : `<button class="btn sm ghost" data-act="semMove" data-v="${u.id}" title="ย้ายไปภาคเรียนที่ ${s === 1 ? 2 : 1}">${s === 1 ? 'ไปภาค 2' : 'ไปภาค 1'}</button><button class="btn sm ghost danger" data-act="delUnit" data-v="${u.id}" aria-label="ลบหน่วย">${ico('trash')}</button>`}</td></tr>`; };
+  const group = s => {
+    const us = semUnits(c, s), raw = semRaw(c, s), sc = Calc.semScale(c, s), ok = raw === sc;
+    return `<tr class="sem-h" data-hue="${s === 1 ? 'teal' : 'violet'}"><td colspan="8"><div class="sem-hrow"><b>ภาคเรียนที่ ${s}</b>
+      <span class="chip ${ok ? 'ok' : 'warn'}">รวม ${raw}/${sc}${sc === 100 ? ' → 50' : ''}</span>
+      ${ok ? '' : `<button class="btn sm" data-act="fitUnits" data-v="${s}">${ico('bolt')} ปรับให้รวม ${sc} อัตโนมัติ</button>`}
+      <span class="sem-add"><button class="btn sm ghost" data-act="semAdd" data-v="${s}">${ico('plus')} หน่วย</button>${s === 1 ? `<button class="btn sm ghost" data-act="semAdd" data-v="1x">${ico('plus')} สอบปลายภาค 1</button>` : ''}</span></div></td></tr>
+      ${us.length ? us.map(row).join('') : `<tr><td colspan="8" class="c muted">ยังไม่มีหน่วยในภาคนี้</td></tr>`}`;
+  };
+  return `<div class="card">
+    <div class="card-h"><h2>หน่วยการเรียนรู้และน้ำหนักคะแนน</h2><span class="chip acc">ภาคละ 50 · รวมทั้งปี 100</span></div>
+    <div class="tbl-wrap flat"><table class="tbl stack unit-tbl sem-tbl">
+      <thead><tr><th>หน่วยที่</th><th class="l">ชื่อหน่วยการเรียนรู้</th><th class="l">มาตรฐาน/ตัวชี้วัด</th><th>ชม.</th><th>คะแนน</th><th title="จำนวนช่องคะแนนย่อยในหน้า 3.1">ช่องย่อย</th><th title="เกณฑ์ผ่านของหน่วย">ผ่าน %</th><th></th></tr></thead>
+      <tbody>${group(1)}${group(2)}</tbody></table></div>
+    <p class="note" style="margin-top:8px">สอบปลายปีอยู่ในภาคเรียนที่ 2 แก้คะแนนได้ในตาราง · ช่อง "คะแนน" ใส่ตามคะแนนเต็มที่เลือกของภาคนั้น ภาคที่เก็บเต็ม 100 ระบบแสดงคะแนนจริงหลังหารครึ่งไว้ข้าง ๆ · ช่องย่อย = จำนวนช่องคะแนนในหน้า 3.1</p>
   </div>`;
 }
 
@@ -378,7 +418,7 @@ function viewResults(c) {
     <span class="note" style="margin-left:auto">ร = ยังมีงานค้าง (กรอก 0 ถ้าไม่ส่งจริง) · มส = เวลาเรียนไม่ถึง ${esc(st.minAtt)}%</span>
     <button class="btn sm" data-act="xlsx">${ico('download')} ส่งออก Excel</button>
   </div></div>
-  ${studs.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th class="sticky-l">เลขที่</th><th class="sticky-l2">ชื่อ - สกุล</th>${units.map(u => `<th>${unitTag(c, u, 'short')}<span class="sub">${esc(u.weight)}</span></th>`).join('')}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th><th>ระดับ</th><th class="l">สถานะ</th><th>ต้องได้ปลายภาค</th><th>ผลหลังแก้</th><th class="l">หมายเหตุการแก้</th></tr></thead><tbody>
+  ${studs.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th class="sticky-l">เลขที่</th><th class="sticky-l2">ชื่อ - สกุล</th>${units.map(u => `<th>${unitTag(c, u, 'short')}<span class="sub">${esc(u.weight)}</span></th>`).join('')}${Calc.semOn(c) ? '<th>ภาค 1<span class="sub">50</span></th><th>ภาค 2<span class="sub">50</span></th>' : ''}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th><th>ระดับ</th><th class="l">สถานะ</th><th>ต้องได้ปลายภาค</th><th>ผลหลังแก้</th><th class="l">หมายเหตุการแก้</th></tr></thead><tbody>
   ${studs.map(s => {
     const r = Calc.studentResult(c, s.id, st);
     const need = Calc.neededFinal(c, s.id, S.target, st);
@@ -391,7 +431,7 @@ function viewResults(c) {
     if (r.failedUnits.length) chips.push('<span class="chip warn">ไม่ผ่าน ' + r.failedUnits.length + ' หน่วย</span>');
     const fix = ['0', 'ร', 'มส'].includes(r.grade);
     const rem = (c.remedial || {})[s.id] || {};
-    return `<tr><td class="sticky-l n">${s.no}</td><td class="sticky-l2">${nameCell(s)}</td>${r.units.map(x => `<td class="n${x.pass === false ? ' fail' : ''}">${Calc.fmt(x.score, rm)}</td>`).join('')}<td class="calc">${Calc.fmt(r.mid, rm)}</td><td class="calc">${Calc.fmt(r.total, rm)}</td><td class="grade g-${r.grade}">${r.grade}</td><td>${chips.join(' ') || '<span class="chip ok">ปกติ</span>'}</td><td class="c">${needTxt}</td>
+    return `<tr><td class="sticky-l n">${s.no}</td><td class="sticky-l2">${nameCell(s)}</td>${r.units.map(x => `<td class="n${x.pass === false ? ' fail' : ''}">${Calc.fmt(x.score, rm)}</td>`).join('')}${r.sem ? r.sem.map(v => `<td class="calc sem-c">${Calc.fmt(v, rm)}</td>`).join('') : ''}<td class="calc">${Calc.fmt(r.mid, rm)}</td><td class="calc">${Calc.fmt(r.total, rm)}</td><td class="grade g-${r.grade}">${r.grade}</td><td>${chips.join(' ') || '<span class="chip ok">ปกติ</span>'}</td><td class="c">${needTxt}</td>
       <td>${fix ? `<select class="inp t" data-rem="${s.id}|grade" style="width:80px"><option value=""></option>${['1', '1.5', '2', '2.5', '3', '3.5', '4'].map(g => `<option ${rem.grade === g ? 'selected' : ''}>${g}</option>`).join('')}</select>` : ''}</td>
       <td>${fix ? `<input class="inp t" data-rem="${s.id}|note" value="${esc(rem.note || '')}" placeholder="วิธีแก้ เช่น ส่งงานครบ สอบซ่อม" style="min-width:200px">` : ''}</td></tr>`;
   }).join('')}</tbody></table></div>` : `<div class="card empty"><h3>ยังไม่มีรายชื่อนักเรียน</h3></div>`}`;

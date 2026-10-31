@@ -9,11 +9,11 @@ function excelSheets(c, st) {
 
   /* 1) สรุปผลการเรียน */
   const r1 = [['เลขที่', 'เลขประจำตัว', 'คำนำหน้า', 'ชื่อ', 'สกุล'].concat(
-    units.map(u => unitTag(c, u, 'long') + ` (${u.weight})`),
+    units.map(u => unitTag(c, u, 'long') + ` (${Calc.effW(c, u)})`), Calc.semOn(c) ? ['ภาคเรียนที่ 1 (50)', 'ภาคเรียนที่ 2 (50)'] : [],
     [`ระหว่างภาค (${c.ratio ? c.ratio.mid : ''})`, 'รวม (100)', 'ระดับผลการเรียน', 'เวลาเรียน %', 'ขาด/ลา (ชม.)', 'คุณลักษณะฯ', 'อ่าน คิด เขียน', 'สมรรถนะ', 'แก้ตัวได้', 'หมายเหตุ'])];
   sum.rows.forEach(({ s, r }) => {
     const rem = (c.remedial || {})[s.id] || {};
-    r1.push(id(s).concat(r.units.map(x => x.score === null ? '' : x.score), [r.mid, r.total, isNaN(Number(r.grade)) ? r.grade : Number(r.grade), Math.round(r.att.pct * 10) / 10, r.att.absent, lvName((c.attr || {})[s.id]), lvName((c.rtw || {})[s.id]), lvName((c.comp || {})[s.id]), rem.grade ? Number(rem.grade) : '', rem.note || (r.missing.length ? 'ค้าง ' + r.missing.length + ' งาน' : '')]));
+    r1.push(id(s).concat(r.units.map(x => x.score === null ? '' : x.score), r.sem || [], [r.mid, r.total, isNaN(Number(r.grade)) ? r.grade : Number(r.grade), Math.round(r.att.pct * 10) / 10, r.att.absent, lvName((c.attr || {})[s.id]), lvName((c.rtw || {})[s.id]), lvName((c.comp || {})[s.id]), rem.grade ? Number(rem.grade) : '', rem.note || (r.missing.length ? 'ค้าง ' + r.missing.length + ' งาน' : '')]));
   });
   r1.push([]);
   r1.push(['', '', '', 'จำนวนนักเรียน', '', sum.n]);
@@ -45,7 +45,7 @@ function excelSheets(c, st) {
 
   const W = [7, 13, 9, 14, 16];
   return [
-    { name: 'สรุปผลการเรียน', title: 'สรุปผลการเรียน · ' + head, rows: r1, header: 1, plainFrom: studs.length + 1, center: [1, 2].concat([2, 5, 6, 7, 8].map(k => 5 + units.length + k)), freeze: { r: 1, c: 5 }, cols: W.concat(units.map(() => 10), [12, 10, 10, 10, 10, 11, 11, 11, 9, 24]) },
+    { name: 'สรุปผลการเรียน', title: 'สรุปผลการเรียน · ' + head, rows: r1, header: 1, plainFrom: studs.length + 1, center: [1, 2].concat([2, 5, 6, 7, 8].map(k => 5 + units.length + (Calc.semOn(c) ? 2 : 0) + k)), freeze: { r: 1, c: 5 }, cols: W.concat(units.map(() => 10), Calc.semOn(c) ? [12, 12] : [], [12, 10, 10, 10, 10, 11, 11, 11, 9, 24]) },
     { name: 'สมุดคะแนนดิบ', title: 'สมุดคะแนนดิบ · ' + head, rows: r2, header: 2, center: [1, 2], freeze: { r: 2, c: 5 }, cols: W.concat(cols.map(() => 12)) },
     { name: 'เวลาเรียนรายคาบ', title: 'เวลาเรียนรายคาบ · ' + head, rows: r3, header: 1, center: [1, 2].concat(ses.map((_, i) => 5 + i)), freeze: { r: 1, c: 5 }, cols: W.concat(ses.map(() => 9), K.map(() => 7), [10, 9, 9, 12]) },
     { name: 'บันทึกการสอน', title: 'บันทึกการสอน · ' + head, rows: r4, header: 1, freeze: { r: 1 }, cols: [22, 6, 24, 30, 8, 8, 26, 36] }
