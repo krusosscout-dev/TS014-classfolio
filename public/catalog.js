@@ -39,7 +39,7 @@ function catalogPicker() {
 function bindCatalogPicker(d, onPick) {
   const box = $('#catPick', d); if (!box) return;
   const year = () => Number(($('#nYear', d) || {}).value) || 0;
-  let g = null, t = '1';
+  let g = null, t = (typeof period === 'function' ? period().term : '1');
   const draw = () => {
     box.querySelectorAll('[data-cg]').forEach(b => b.classList.toggle('on', b.dataset.cg === g));
     const sec = g && g.startsWith('ม.');

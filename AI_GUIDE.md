@@ -3,7 +3,7 @@
 คู่มือสำหรับ AI ที่แก้โค้ดต่อ เว็บแบบ static (ไม่มีขั้นตอน build) JavaScript ธรรมดา ไม่มีเฟรมเวิร์ก
 
 ## ลำดับการโหลด (index.html)
-firebase-config.js → calc.js → sync.js → platform.js → util.js → demo.js → xlsx.js → print.js → views.js → timetable.js → live.js → export.js → term.js → catalog.js → roster.js → app.js
+firebase-config.js → calc.js → sync.js → platform.js → util.js → demo.js → xlsx.js → print.js → views.js → timetable.js → live.js → export.js → term.js → catalog.js → roster.js → seat.js → room3d.js → app.js
 ทุกไฟล์ (ยกเว้น calc.js, sync.js, platform.js, xlsx.js) ประกาศฟังก์ชันระดับ global ใช้ร่วมกัน
 
 ## หน้าที่ของแต่ละไฟล์
@@ -19,6 +19,13 @@ firebase-config.js → calc.js → sync.js → platform.js → util.js → demo.
 - หน่วยสอบกลางภาค `unit.isMid` (นับรวมในระหว่างเรียน ไม่นับเลขหน่วย) · ใช้ `unitTag(c,u,'short'|'long'|'th'|'no')` และ `unitNo(c,u)` ทุกที่ที่แสดงชื่อหน่วย ห้ามใช้ index ตรง ๆ
 - สำรองข้อมูล: meta `{id, at, n, kind:'day'|'pre'|'term', label?}` · `bkPlan(list)` เลือกฉบับที่เก็บ (รายวัน 14 · รายสัปดาห์ 8 · สิ้นเดือน 12 · term ถาวร; โหมด local 7 วัน + term 4) · `saveBackupNow('term', label)` เรียกก่อนเริ่มภาคเรียนใหม่
 - ประถมแบ่ง 2 ภาคเรียน: `c.sem = {on, scale:{1:50|100, 2:50|100}}`, `u.sem = 1|2` (isFinal = ภาค 2) · น้ำหนักจริงใช้ `Calc.effW(c,u)` / `Calc.effWeights(c)` ทุกที่ (คำนวณ พิมพ์ ส่งออก) ห้ามใช้ `u.weight` ตรง ๆ · `studentResult().sem = [ภาค1, ภาค2]` · `touch()` sync `c.ratio = Calc.semRatio(c)` · helper ใน util: `setSemMode`, `setSemScale`, `fitSemWeights` (สอบคงเดิม), `sortSem`
+- คอลัมน์ด่วน: task ที่ `unit` ว่าง/ไม่พบ = ยังไม่นับคะแนน (`bookColumns` ใส่ท้ายเป็นกลุ่ม `u.loose`) · `full` อาจเป็น null ต้องเช็ก `Number(t.full) > 0` ก่อนเทียบ · `savedToast()` แจ้งบันทึกสำเร็จ (เว้น 5 วินาที, เงียบ 3 วินาทีแรกหลังเข้าระบบ) · `termChip()` ป้ายภาคเรียนปัจจุบันที่แถบบน
+- ภาคเรียนปัจจุบัน `settings.period = {year, term}` · `activeCourses()` = รายวิชาของภาคนั้น (มัธยมตรงปี+ภาค, ประถม `isYearly` ตรงปี) · ดูย้อนหลังได้ (`viewingPast()`) · `newTermDialog` ขึ้น `nextPeriod`: มัธยมสร้างวิชาใหม่ ประถมปีเดิมใช้วิชาเดิมต่อ ประถมปีใหม่สร้างใหม่ · `courseTermUI(c)` ป้ายบนจอ (เอกสาร ปพ.5 ใช้ `termLabel`)
+- เมนู **คะแนน ปพ.5** (`viewConv`) แสดงคะแนนที่แปลงแล้ว สมุดคะแนนแสดงเฉพาะคะแนนดิบ
+- `seat.js` ผังห้องเรียน `settings.seats[classOf(c)] = {rows, cols, map:{'r-c':{id,code}}}` ใช้ร่วมทุกวิชาของห้อง · Live Class โหมด `seat` แตะที่นั่งวนสถานะ · `seatEditor(c)`
+- `room3d.js`: มุมภาระงาน `r3cork` (กระดานบนผนังหลัง) และ `r3work` (แผงใต้ห้อง: `r3workTasks` = งานใน se.tasks + การบ้านที่ due >= วันนี้ · กระดานความจำ `c.memos = [{id,text,hue,date}]` แก้ผ่าน `r3memoDlg`) · ACT: r3Board, r3Memo, r3ScoreTask · การ์ดชื่อ `.r3-tip` ใช้ scale(1/var(--zoom))
+- `room3d.js`: แถวรอหน้าห้องใช้ `se.inRoom = {sid:1}` (`r3queued(se,sid)`: ถ้ายังไม่มีคาบ ทุกคนยืนรอ · คาบที่ไม่มี inRoom ถือว่านั่งครบ) · การเดินใช้ `S.r3.walk[sid] = {t,x,y,dur}` สร้าง @keyframes รายคนใน `<style>` ภายในห้อง (ประตูหน้า → ทางเดินซ้าย → ช่องระหว่างแถว → ที่นั่ง) · ภายนอกห้องไม่มีของตกแต่ง
+- `room3d.js` (v25) ห้องเรียน 3 มิติด้วย CSS 3D ล้วน (ไม่มีไลบรารี) แสดงใน Live Class โหมดผังห้องเมื่อ `S.seatView` = '3d' (ค่าเริ่มต้น; '2d' = ผังแบบเรียบ) · ใช้ผังจาก seat.js หรือ `autoSeatPlan(c)` ชั่วคราวตามเลขที่ · สถานะมุมกล้องอยู่ใน `S.r3` {rz, zoom, tilt, names, star, spot, full} · `r3apply()` ย่อพอดีกรอบอัตโนมัติ (เรียกใน afterRender และตอน resize) · `R3_ACT`: r3Tap (ทำงานตาม `S.r3.mode`: att เช็คชื่อ · star ให้ดาว · score เปิด `r3scoreDlg` แล้วบันทึกลง `c.scores[task][sid]`), r3AllIn, r3Mode, r3Theme (เก็บใน `c.r3theme`: sky|space|sea|thai, ของตกแต่งจาก `r3decor`), r3Spin, r3Rot, r3Zoom, r3Reset, r3Names, r3Star, r3Full, r3Rand, r3Clear, seatView
 - `util.js` ตัวช่วย (`$`, `esc`, `newId`, `ico`) ค่าคงที่ (`TABS`, `ASSESS`, `GROUPS`, `PALETTES`) ค่าเริ่มต้น (`defaultSettings`, `defaultCourse`) และสถานะ `S`
 - `views.js` สร้าง HTML ของแต่ละแท็บ (`viewOverview`, `viewBook`, ... ) + `checkPages` (ความพร้อม 11 หน้า) + `risksOf`
 - `print.js` → `Print.render(course, settings, {pages, bw, wm})` คืน HTML ของแผ่น A4 (`.sheet`, แนวนอนใช้ `.sheet.land` + `@page land`)

@@ -75,7 +75,7 @@ function viewHome() {
     studs += sm.n; pend += p; if (done === pg.length) ready++;
     const color = levelOfCourse(c) === 'ป' ? 'var(--h-teal)' : 'var(--h-indigo)';
     return `<article class="ccard ${lvClass(c)}">
-      <button class="ccard-top" data-act="go" data-v="${c.id}|overview"><b>${esc(c.code)} ${esc(c.name)}</b><small>ชั้น ${esc(classOf(c))} · ${esc(termLabel(c))}${c.demo ? ' · ตัวอย่าง' : ''}</small><span class="lvtag">ปพ.5 ${levelOfCourse(c)}</span></button>
+      <button class="ccard-top" data-act="go" data-v="${c.id}|overview"><b>${esc(c.code)} ${esc(c.name)}</b><small>ชั้น ${esc(classOf(c))} · ${esc(courseTermUI(c))}${c.demo ? ' · ตัวอย่าง' : ''}</small><span class="lvtag">ปพ.5 ${levelOfCourse(c)}</span></button>
       <div class="ccard-body">${ring(done, pg.length, color)}<div class="mini"><div><b>${sm.n}</b><span>นักเรียน</span></div><div><b>${sm.meanTotal === null ? '–' : Math.round(sm.meanTotal)}</b><span>เฉลี่ย</span></div><div><b style="color:${p ? 'var(--warn)' : 'var(--ok)'}">${p}</b><span>งานค้าง</span></div></div></div>
       <div class="ccard-foot"><button data-act="go" data-v="${c.id}|book">${ico('book')} คะแนน</button><button data-act="go" data-v="${c.id}|results">${ico('check')} ตัดเกรด</button><button data-act="go" data-v="${c.id}|print">${ico('print')} ปพ.5</button></div>
     </article>`;
@@ -90,7 +90,7 @@ function viewHome() {
   const greet = h < 12 ? 'สวัสดีตอนเช้า' : h < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น';
   return `
   <section class="hero">
-    <div><small>${esc(thaiDate(new Date()))} · ClassFolio</small><h1>${greet}${first ? ' ครู' + esc(first) : ''}</h1><p>${list.length ? `มี ${list.length} รายวิชา ${pend ? `· นักเรียนที่ยังมีงานค้าง ${pend} คน` : '· ไม่มีงานค้าง'}` : 'เริ่มต้นด้วยการสร้างรายวิชาแรก แล้ววางรายชื่อนักเรียนจาก Excel'}</p></div>
+    <div><small>${esc(thaiDate(new Date()))}${(() => { const tc = currentTermCourse(); return tc ? ' · ' + esc(levelOfCourse(tc) === 'ป' || tc.term === 'ปี' ? 'ปีการศึกษา ' + tc.year : 'ภาคเรียนที่ ' + tc.term + '/' + tc.year) : ''; })()}</small><h1>${greet}${first ? ' ครู' + esc(first) : ''}</h1><p>${list.length ? `มี ${list.length} รายวิชา ${pend ? `· นักเรียนที่ยังมีงานค้าง ${pend} คน` : '· ไม่มีงานค้าง'}` : 'เริ่มต้นด้วยการสร้างรายวิชาแรก แล้ววางรายชื่อนักเรียนจาก Excel'}</p></div>
     <div class="row">${list.length ? `<button class="btn pri" data-act="live">${ico('live')} เปิด Live Class</button><button class="btn" data-act="newCourse">${ico('plus')} สร้างรายวิชา</button><button class="btn" data-act="newTerm">${ico('calendar')} เริ่มภาคเรียนใหม่</button>` : `<button class="btn pri" data-act="newCourse">${ico('plus')} สร้างรายวิชาแรก</button>`}</div>
   </section>
   ${Store.mode === 'local' ? localBanner() : ''}
@@ -153,6 +153,9 @@ function viewOverview(c) {
 function bookColumns(c) {
   const cols = [];
   (c.units || []).forEach(u => Calc.unitTasks(c, u.id).forEach(t => cols.push({ t, u })));
+  /* คอลัมน์ด่วนที่ยังไม่กำหนดหน่วย อยู่ท้ายสุด (ยังไม่นับคะแนน) */
+  const loose = (c.tasks || []).filter(t => !t.unit || !(c.units || []).some(u => u.id === t.unit));
+  if (loose.length) { const L = { id: '', name: 'ยังไม่กำหนดหน่วย', loose: true }; loose.forEach(t => cols.push({ t, u: L })); }
   return cols;
 }
 function viewBook(c) {
@@ -162,27 +165,29 @@ function viewBook(c) {
   if (!studs.length) return `<div class="card empty"><h3>ยังไม่มีรายชื่อนักเรียน</h3><p>เพิ่มหรือวางรายชื่อจาก Excel ก่อน แล้วจึงกรอกคะแนน</p><button class="btn pri" data-act="tab" data-v="students">${ico('users')} ไปที่รายชื่อนักเรียน</button></div>`;
   const spans = []; cols.forEach(cl => { const l = spans[spans.length - 1]; if (l && l.u === cl.u) l.n++; else spans.push({ u: cl.u, n: 1 }); });
   const rm = S.settings.rounding;
-  const head1 = `<tr><th class="sticky-l" rowspan="2">เลขที่</th><th class="sticky-l2" rowspan="2">ชื่อ - สกุล</th>${spans.map(sp => `<th class="unit-h" data-hue="${sp.u.isFinal ? 'rose' : sp.u.isMid ? 'amber' : ['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][units.indexOf(sp.u) % 7]}" colspan="${sp.n}">${esc(sp.u.isFinal || sp.u.isMid ? sp.u.name : unitTag(c, sp.u, 'long') + ' · ' + sp.u.name)}</th>`).join('')}<th class="unit-h" data-hue="indigo" colspan="${units.length + 2 + (Calc.semOn(c) ? 2 : 0)}">แปลงเป็นคะแนน ปพ.5 (จำนวนเต็ม)</th><th rowspan="2">ระดับ</th></tr>`;
-  const head2 = `<tr>${cols.map(({ t }) => `<th class="task-h" data-act="task" data-v="${t.id}" title="${esc(t.name)} · คลิกเพื่อแก้ไข"><span class="tn">${esc(t.name)}</span><span class="sub">${t.auto === 'bonus' ? '<span class="bonus">จาก Live Class</span>' : (t.bonus ? '<span class="bonus">+พิเศษ</span> ' : '') + 'เต็ม ' + esc(t.full)}${t.due ? '<br>ส่ง ' + esc(thaiDate(t.due).split(' ').slice(0, 2).join(' ')) : ''}</span></th>`).join('')}${units.map(u => `<th>${unitTag(c, u, 'short')}<span class="sub">${esc(u.weight)}</span></th>`).join('')}${Calc.semOn(c) ? '<th>ภาค 1<span class="sub">50</span></th><th>ภาค 2<span class="sub">50</span></th>' : ''}<th>ระหว่าง<span class="sub">${esc(c.ratio.mid)}</span></th><th>รวม<span class="sub">100</span></th></tr>`;
+  const head1 = `<tr><th class="sticky-l" rowspan="2">เลขที่</th><th class="sticky-l2" rowspan="2">ชื่อ - สกุล</th>${spans.map(sp => `<th class="unit-h" data-hue="${sp.u.loose ? 'slate' : sp.u.isFinal ? 'rose' : sp.u.isMid ? 'amber' : ['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][units.indexOf(sp.u) % 7]}" colspan="${sp.n}">${sp.u.loose ? `${ico('alert')} ยังไม่กำหนดหน่วย · ยังไม่นับคะแนน` : esc(sp.u.isFinal || sp.u.isMid ? sp.u.name : unitTag(c, sp.u, 'long') + ' · ' + sp.u.name)}</th>`).join('')}</tr>`;
+  const head2 = `<tr>${cols.map(({ t }) => `<th class="task-h" data-act="task" data-v="${t.id}" title="${esc(t.name)} · คลิกเพื่อแก้ไข"><span class="tn">${esc(t.name)}</span><span class="sub">${t.auto === 'bonus' ? '<span class="bonus">จาก Live Class</span>' : (t.bonus ? '<span class="bonus">+พิเศษ</span> ' : '') + (Number(t.full) > 0 ? 'เต็ม ' + esc(t.full) : '<span class="need">แตะเพื่อตั้งค่า</span>')}${t.due ? '<br>ส่ง ' + esc(thaiDate(t.due).split(' ').slice(0, 2).join(' ')) : ''}</span></th>`).join('')}</tr>`;
   const rows = studs.map((s, r) => {
     const cells = cols.map(({ t }, ci) => {
       const v = (c.scores[t.id] || {})[s.id];
       const blank = v === '' || v === undefined || v === null;
-      const over = !blank && Number(v) > Number(t.full);
+      const over = !blank && Number(t.full) > 0 && Number(v) > Number(t.full);
       return `<td class="${blank && !t.bonus ? 'blank' : ''}${over ? ' over' : ''}"><input class="cell" data-sc="${t.id}|${s.id}" data-r="${r}" data-c="${ci}" value="${blank ? '' : esc(v)}" ${t.auto === 'bonus' ? 'readonly title="รวมจาก Live Class อัตโนมัติ"' : ''} inputmode="decimal" aria-label="${esc(t.name)} ${esc(studentName(s))}"></td>`;
     }).join('');
-    return `<tr data-row="${s.id}"><td class="sticky-l n">${s.no}</td><td class="sticky-l2">${nameCell(s)}</td>${cells}${calcCells(c, s.id, rm)}</tr>`;
+    return `<tr data-row="${s.id}"><td class="sticky-l n">${s.no}</td><td class="sticky-l2">${nameCell(s)}</td>${cells}</tr>`;
   }).join('');
-  const foot = `<tr><td class="sticky-l"></td><td class="sticky-l2 muted">ค่าเฉลี่ย</td>${cols.map(({ t }) => `<td class="n muted" data-avg="${t.id}">${avgTask(c, t)}</td>`).join('')}<td colspan="${units.length + 3 + (Calc.semOn(c) ? 2 : 0)}"></td></tr>`;
+  const foot = `<tr><td class="sticky-l"></td><td class="sticky-l2 muted">ค่าเฉลี่ย</td>${cols.map(({ t }) => `<td class="n muted" data-avg="${t.id}">${avgTask(c, t)}</td>`).join('')}</tr>`;
   return `
   <div class="card bar">
     <div class="row">
-      <button class="btn pri" data-act="addTask">${ico('plus')} เพิ่มงาน/คะแนน</button>
-      <span class="chip acc">${c.convert === 'weighted' ? 'แปลงตามน้ำหนักรายงาน' : 'แปลงตามสัดส่วนคะแนนรวม'}</span>
+      <button class="btn pri" data-act="quickCol" title="เพิ่มคอลัมน์แล้วกรอกคะแนนได้ทันที ตั้งชื่อ คะแนนเต็ม และหน่วยทีหลัง">${ico('plus')} คอลัมน์ด่วน</button>
+      <button class="btn" data-act="addTask">${ico('plus')} เพิ่มงานแบบละเอียด</button>
+      <button class="btn" data-act="tab" data-v="conv">${ico('layers')} ดูคะแนนที่แปลงแล้ว</button>
       <span class="note">คลิกหัวคอลัมน์เพื่อแก้ไขงาน · ลูกศร/Enter เลื่อนช่อง · วางคะแนนจาก Excel ได้ทั้งคอลัมน์ · ช่องสีส้ม = ยังไม่มีคะแนน</span>
     </div>
   </div>
-  ${cols.length ? `<div class="tbl-wrap"><table class="tbl" id="bookTbl"><thead>${head1}${head2}</thead><tbody>${rows}</tbody><tfoot>${foot}</tfoot></table></div>` : `<div class="card empty"><h3>ยังไม่มีงานในสมุดคะแนน</h3><p>เพิ่มงานแต่ละชิ้นพร้อมคะแนนเต็มจริง เช่น ใบงาน 20 คะแนน ระบบจะแปลงเข้าหน่วยให้เอง</p><button class="btn pri" data-act="addTask">${ico('plus')} เพิ่มงานชิ้นแรก</button></div>`}`;
+  ${(() => { const n = cols.filter(x => x.u.loose).length; return n ? `<div class="banner">${ico('alert')}<span><b>มี ${n} คอลัมน์ด่วนที่ยังไม่นับคะแนน</b> แตะหัวคอลัมน์สีเทาเพื่อเลือกหน่วยและใส่คะแนนเต็ม</span></div>` : ''; })()}
+  ${cols.length ? `<div class="tbl-wrap"><table class="tbl" id="bookTbl"><thead>${head1}${head2}</thead><tbody>${rows}</tbody><tfoot>${foot}</tfoot></table></div>` : `<div class="card empty"><h3>ยังไม่มีงานในสมุดคะแนน</h3><p>เพิ่มงานแต่ละชิ้นพร้อมคะแนนเต็มจริง เช่น ใบงาน 20 คะแนน ระบบจะแปลงเข้าหน่วยให้เอง</p><div class="row" style="justify-content:center"><button class="btn pri" data-act="quickCol">${ico('plus')} คอลัมน์ด่วน กรอกได้เลย</button><button class="btn" data-act="addTask">${ico('plus')} เพิ่มงานแบบละเอียด</button></div></div>`}`;
 }
 function calcCells(c, sid, rm) {
   const r = Calc.studentResult(c, sid, S.settings);
@@ -203,6 +208,23 @@ function updateBookRow(c, sid) {
   if (r.sem) r.sem.forEach((v, i) => set('sem' + (i + 1), Calc.fmt(v, rm)));
   set('mid', Calc.fmt(r.mid, rm)); set('total', Calc.fmt(r.total, rm));
   const g = tr.querySelector('[data-cc="grade"]'); if (g) { g.textContent = r.grade; g.className = 'grade g-' + r.grade; }
+}
+
+/* ---------------- คะแนน ปพ.5 (คะแนนที่แปลงแล้ว แยกจากสมุดคะแนนดิบ) ---------------- */
+function viewConv(c) {
+  const st = S.settings, rm = st.rounding, studs = Calc.activeStudents(c), units = c.units || [], ew = Calc.effWeights(c);
+  if (!studs.length) return `<div class="card empty"><h3>ยังไม่มีรายชื่อนักเรียน</h3><button class="btn pri" data-act="tab" data-v="students">${ico('users')} ไปที่รายชื่อนักเรียน</button></div>`;
+  const raw = (u, sid) => { let got = 0, full = 0, any = false; Calc.unitTasks(c, u.id).filter(t => !t.bonus).forEach(t => { const v = Calc.num((c.scores[t.id] || {})[sid]); full += Number(t.full) || 0; if (v !== null) { got += v; any = true; } }); return any ? got + '/' + full : ''; };
+  const hue = (u, i) => u.isFinal ? 'rose' : u.isMid ? 'amber' : ['blue', 'violet', 'teal', 'amber', 'pink', 'cyan', 'green'][i % 7];
+  const sem = Calc.semOn(c);
+  const head = `<tr><th class="sticky-l">เลขที่</th><th class="sticky-l2">ชื่อ - สกุล</th>${units.map((u, i) => `<th class="unit-h" data-hue="${hue(u, i)}" title="${esc(u.name)}">${unitTag(c, u, 'short')}<span class="sub">${esc(ew[u.id])}</span></th>`).join('')}${sem ? '<th>ภาค 1<span class="sub">50</span></th><th>ภาค 2<span class="sub">50</span></th>' : ''}<th>ระหว่าง${levelOfCourse(c) === 'ป' ? 'ปี' : 'ภาค'}<span class="sub">${esc(c.ratio.mid)}</span></th><th>ปลาย${levelOfCourse(c) === 'ป' ? 'ปี' : 'ภาค'}<span class="sub">${esc(c.ratio.final)}</span></th><th>รวม<span class="sub">100</span></th><th>ระดับ</th></tr>`;
+  const rows = studs.map(s => { const r = Calc.studentResult(c, s.id, st); return `<tr><td class="sticky-l n">${s.no}</td><td class="sticky-l2">${nameCell(s)}</td>${r.units.map(x => { const rw = raw(x.unit, s.id); return `<td class="calc${x.pass === false ? ' fail' : ''}" title="${rw ? 'คะแนนดิบ ' + rw : 'ยังไม่มีคะแนน'}">${Calc.fmt(x.score, rm)}${rw ? `<span class="raw">${rw}</span>` : ''}</td>`; }).join('')}${r.sem ? r.sem.map(v => `<td class="calc sem-c">${Calc.fmt(v, rm)}</td>`).join('') : ''}<td class="calc">${Calc.fmt(r.mid, rm)}</td><td class="calc">${Calc.fmt(r.fin, rm)}</td><td class="calc"><b>${Calc.fmt(r.total, rm)}</b></td><td class="grade g-${r.grade}" title="${r.grade === 'ร' ? 'งานค้าง ' + r.missing.length + ' ชิ้น · ถ้าคิดตามคะแนนที่มีได้ ' + r.projected : ''}">${r.grade}</td></tr>`; }).join('');
+  return `<div class="card bar"><div class="row">
+      <span class="chip acc">${c.convert === 'weighted' ? 'แปลงตามน้ำหนักรายงาน' : 'แปลงตามสัดส่วนคะแนนรวม'}</span>
+      <button class="btn sm" data-act="tab" data-v="book">${ico('book')} กลับไปกรอกคะแนน</button>
+      <span class="note" style="flex:1;min-width:220px">คะแนนที่ระบบแปลงจากสมุดคะแนนดิบเป็นคะแนน ปพ.5 (จำนวนเต็ม) ตัวเลขเล็กใต้คะแนนคือคะแนนดิบที่ได้/คะแนนเต็มรวมของหน่วย · สีแดง = ไม่ผ่านเกณฑ์หน่วย · ร = มีงานค้าง</span>
+    </div></div>
+    <div class="tbl-wrap"><table class="tbl conv-tbl"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
 }
 
 /* ---------------- โครงสร้างรายวิชา ---------------- */

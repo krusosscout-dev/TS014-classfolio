@@ -28,10 +28,20 @@ async function flush() {
       S.base[id] = snapJ;
       if (Store.mode === 'firebase' && !navigator.onLine) { S.saveState = 'offline'; pill(); }
       await p;
-      S.saveState = 'saved';
+      S.saveState = 'saved'; savedToast();
     } catch (e) { S.saveState = 'err'; S.dirty.add(id); toast('บันทึกไม่สำเร็จ: ' + e.message); }
   }
   pill();
+}
+/* กล่องแจ้ง "บันทึกเรียบร้อย" ทุกครั้งที่บันทึกสำเร็จ (ระหว่างกรอกต่อเนื่องเว้นอย่างน้อย 5 วินาที) */
+function savedToast() {
+  if (!S.user || Date.now() - (S.lastSavedToast || 0) < 5000) return;
+  S.lastSavedToast = Date.now();
+  let el = $('#savedToast');
+  if (!el) { el = document.createElement('div'); el.id = 'savedToast'; el.className = 'saved-toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  el.innerHTML = `${ico('check')}<span>บันทึกเรียบร้อย</span>`;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(S.savedTimer); S.savedTimer = setTimeout(() => el.classList.remove('show'), 1800);
 }
 /* บันทึกตั้งค่า/ทะเบียนที่ค้างอยู่ทันที (ตอนปิดหรือสลับแท็บ) */
 function flushSettings() { if (!S.setPending) return; clearTimeout(S.setTimer); S.setPending = false; try { const j = JSON.stringify(S.settings); Store.saveSettings(S.settings); S.baseSettings = j; } catch (e) { } }
@@ -40,7 +50,7 @@ function touchSettings() {
   S.saveState = 'saving'; pill();
   S.setTimer = setTimeout(async () => {
     S.setPending = false;
-    try { const j = JSON.stringify(S.settings); const p = Store.saveSettings(S.settings); S.baseSettings = j; await p; S.saveState = 'saved'; } catch (e) { S.saveState = 'err'; toast('บันทึกตั้งค่าไม่สำเร็จ: ' + e.message); }
+    try { const j = JSON.stringify(S.settings); const p = Store.saveSettings(S.settings); S.baseSettings = j; await p; S.saveState = 'saved'; savedToast(); } catch (e) { S.saveState = 'err'; toast('บันทึกตั้งค่าไม่สำเร็จ: ' + e.message); }
     pill();
   }, 600);
 }
@@ -185,7 +195,7 @@ function render() {
   const c = cur();
   const todo = todoMap(c);
   const m = pageMeta(c);
-  const sorted = activeCourses().concat(c && c.archived ? [c] : []).slice().sort((a, b) => (b.year - a.year) || String(b.term).localeCompare(String(a.term)) || thColl.compare(a.code, b.code));
+  const sorted = activeCourses().concat(c && !activeCourses().includes(c) ? [c] : []).slice().sort((a, b) => (b.year - a.year) || String(b.term).localeCompare(String(a.term)) || thColl.compare(a.code, b.code));
   const isOn = k => ['home', 'timetable', 'settings', 'live', 'tools', 'roster'].includes(k) ? S.view === k : S.view === 'course' && S.tab === k;
   const navBtn = (act, v, label, ic, hue, n) => `<button class="nav ${isOn(v || act) ? 'on' : ''}" data-hue="${hue}" data-act="${act}" ${v ? `data-v="${v}"` : ''} ${act === 'tab' && !c ? 'disabled' : ''}><span class="chipico">${ico(ic)}</span><span class="nl">${label}</span>${n ? `<span class="todo" title="หน้า ปพ.5 ที่ยังไม่ครบ ${n} หน้า">${n}</span>` : ''}</button>`;
   const initial = String(S.settings.teacher || 'ครู').trim().charAt(0);
@@ -201,8 +211,8 @@ function render() {
         ${navBtn('roster', '', 'ทะเบียนนักเรียน', 'users', 'teal')}
       </div>
       <div class="side-label">รายวิชา</div>
-      ${c ? `<button class="switch ${lvClass(c)}" data-act="switcher" aria-expanded="${S.switcher}"><span class="lv">${levelOfCourse(c)}</span><span class="sw-t"><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(termLabel(c))}</small></span>${ico('chev')}</button>` : `<button class="switch" data-act="newCourse"><span class="sw-t"><b>สร้างรายวิชา</b><small>ยังไม่มีรายวิชา</small></span>${ico('plus')}</button>`}
-      ${S.switcher ? `<div class="course-list">${sorted.map(x => `<button class="course-item ${lvClass(x)} ${x.id === S.cur ? 'on' : ''}" data-act="open" data-v="${x.id}"><span class="lv">${levelOfCourse(x)}</span><b>${esc(x.code)} ${esc(x.name)}</b><span>${esc(classOf(x))} · ${esc(termLabel(x))}</span></button>`).join('')}<button class="course-item" data-act="newCourse" style="--lvc:rgba(255,255,255,.18)"><span class="lv">+</span><b>สร้างรายวิชา</b><span>หรือคัดลอกจากวิชาเดิม</span></button></div>` : ''}
+      ${c ? `<button class="switch ${lvClass(c)}" data-act="switcher" aria-expanded="${S.switcher}"><span class="lv">${levelOfCourse(c)}</span><span class="sw-t"><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(courseTermUI(c))}</small></span>${ico('chev')}</button>` : `<button class="switch" data-act="newCourse"><span class="sw-t"><b>สร้างรายวิชา</b><small>ยังไม่มีรายวิชา</small></span>${ico('plus')}</button>`}
+      ${S.switcher ? `<div class="course-list">${sorted.map(x => `<button class="course-item ${lvClass(x)} ${x.id === S.cur ? 'on' : ''}" data-act="open" data-v="${x.id}"><span class="lv">${levelOfCourse(x)}</span><b>${esc(x.code)} ${esc(x.name)}</b><span>${esc(classOf(x))} · ${esc(courseTermUI(x))}</span></button>`).join('')}<button class="course-item" data-act="newCourse" style="--lvc:rgba(255,255,255,.18)"><span class="lv">+</span><b>สร้างรายวิชา</b><span>หรือคัดลอกจากวิชาเดิม</span></button></div>` : ''}
       <div class="side-scroll">
         ${TABS.map(([k, n, ic, hue]) => navBtn('tab', k, n, ic, hue, k !== 'overview' ? todo[k] : 0)).join('')}
       </div>
@@ -217,6 +227,7 @@ function render() {
         <div class="title"><small>${esc(m.crumb)}</small><h1>${esc(m.title)}</h1></div>
         ${c ? `<button class="course-pill ${lvClass(c)}" data-act="pickCourse" title="เปลี่ยนรายวิชา"><span class="lv">${levelOfCourse(c)}</span><span class="cp-t"><b>${esc(c.code)}</b><small>${esc(classOf(c))}</small></span>${ico('chev')}</button>` : ''}
         <div class="top-actions">
+          ${termChip()}
           <button class="iconbtn" data-act="palette" title="ค้นหา (Ctrl+K)" aria-label="ค้นหา">${ico('search')}</button>
           ${c && ['course', 'live'].includes(S.view) ? `<button class="iconbtn hide-s" data-act="undo" title="เลิกทำ (Ctrl+Z)" aria-label="เลิกทำ">${ico('undo')}</button><button class="iconbtn hide-s" data-act="redo" title="ทำซ้ำ (Ctrl+Y)" aria-label="ทำซ้ำ">${ico('redo')}</button>` : ''}
           <button class="iconbtn" data-act="cycleTheme" title="โหมดสี: ${{ system: 'ตามเครื่อง', light: 'สว่าง', dark: 'มืด' }[S.settings.theme] || 'ตามเครื่อง'}" aria-label="สลับโหมดสี">${ico(S.settings.theme === 'dark' ? 'moon' : 'sun')}</button>
@@ -243,7 +254,7 @@ function moreSheet() {
   const items = [['home', '', 'หน้าแรก', 'home', 'indigo'], ['live', '', 'Live Class', 'live', 'rose'], ['timetable', '', 'ตารางสอน', 'calendar', 'cyan'], ['tools', '', 'Class Tools', 'dice', 'violet'], ['roster', '', 'ทะเบียนนักเรียน', 'users', 'teal']].concat(c ? TABS.map(([k, n, ic, hue]) => ['tab', k, n, ic, hue]) : []).concat([['settings', '', 'ตั้งค่า', 'settings', 'slate']]);
   const d = document.createElement('dialog'); d.className = 'dlg sheet-dlg';
   d.innerHTML = `<div class="dlg-h"><h2>เมนูทั้งหมด</h2><button class="btn ghost sm" data-x aria-label="ปิด">✕</button></div>
-    ${c ? `<button class="sheet-course ${lvClass(c)}" data-go="pick"><span class="lv">${levelOfCourse(c)}</span><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(termLabel(c))} · แตะเพื่อเปลี่ยนวิชา</small></span>${ico('chev')}</button>` : ''}
+    ${c ? `<button class="sheet-course ${lvClass(c)}" data-go="pick"><span class="lv">${levelOfCourse(c)}</span><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(courseTermUI(c))} · แตะเพื่อเปลี่ยนวิชา</small></span>${ico('chev')}</button>` : ''}
     <div class="sheet-grid">${items.map(([a, v, n, ic, hue]) => { const t = a === 'tab' && v !== 'overview' ? todo[v] : a === 'settings' ? todo.settings : 0; return `<button data-hue="${hue}" data-go="${a}|${v}"><span class="chipico">${ico(ic)}</span><span>${n}</span>${t ? `<span class="todo">${t}</span>` : ''}</button>`; }).join('')}</div>
     ${isStandalone() ? '' : `<button class="sheet-course" data-go="install|" style="margin-bottom:10px"><span class="lv" style="--lvc:#7444dc">${ico('download')}</span><span><b>ติดตั้งเป็นแอป</b><small>มีไอคอนบนหน้าจอ เปิดเต็มจอ</small></span></button>`}
     <p class="note" style="padding:0 22px 18px"><span class="todo">1</span> = หน้า ปพ.5 ที่ยังไม่ครบ ยังขาดกี่หน้า</p>`;
@@ -262,8 +273,8 @@ function renderView(c) {
   if (S.view === 'tools') return viewTools();
   if (S.view === 'roster') return viewRoster();
   if (!c) return `${Store.mode === 'local' ? localBanner() : ''}<div class="card empty"><h3>ยังไม่มีรายวิชา</h3><p>สร้างรายวิชาแรก หรือโหลดข้อมูลตัวอย่างเพื่อทดลองใช้</p><div class="row"><button class="btn pri" data-act="newCourse">${ico('plus')} สร้างรายวิชา</button><button class="btn" data-act="demo">โหลดข้อมูลตัวอย่าง</button></div></div>`;
-  const v = { overview: viewOverview, book: viewBook, teach: viewTeach, structure: viewStructure, desc: viewDesc, students: viewStudents, att: viewAtt, assess: viewAssess, results: viewResults, print: viewPrint, log: viewLog }[S.tab] || viewOverview;
-  return (c.archived ? `<div class="banner arc">${ico('book')}<span><b>คลังภาคเรียนเก่า</b> รายวิชานี้จบภาคเรียนแล้ว ไม่แสดงใน Live Class และตารางสอน แก้ไข พิมพ์ ปพ.5 และส่งออก Excel ได้ตามปกติ</span><button class="btn sm" data-act="unarchive">${ico('undo')} นำกลับมาใช้งาน</button></div>` : '') + v(c);
+  const v = { overview: viewOverview, book: viewBook, conv: viewConv, teach: viewTeach, structure: viewStructure, desc: viewDesc, students: viewStudents, att: viewAtt, assess: viewAssess, results: viewResults, print: viewPrint, log: viewLog }[S.tab] || viewOverview;
+  return (viewingPast() && inPeriod(c) ? `<div class="banner arc">${ico('history')}<span><b>กำลังดูภาคเรียนย้อนหลัง</b> ${esc(periodText(period()))} · แก้ไข พิมพ์ ปพ.5 และส่งออก Excel ได้ตามปกติ</span><button class="btn sm" data-act="periodDlg">${ico('calendar')} กลับภาคปัจจุบัน</button></div>` : '') + (!activeCourses().includes(c) ? `<div class="banner arc">${ico('book')}<span><b>คลังภาคเรียนเก่า</b> รายวิชานี้ไม่ใช่ของ${esc(periodText(period()))} ไม่แสดงใน Live Class และตารางสอน แก้ไข พิมพ์ ปพ.5 และส่งออก Excel ได้ตามปกติ</span><button class="btn sm" data-act="unarchive">${ico('undo')} นำกลับมาใช้งาน</button></div>` : '') + v(c);
 }
 function localBanner() {
   return `<div class="banner">${ico('alert')}<span><b>โหมดทดลอง</b> ข้อมูลเก็บในเบราว์เซอร์เครื่องนี้เท่านั้น เมื่อติดตั้งบน Vercel + Firebase ข้อมูลจะเก็บบนคลาวด์และเข้าได้ทุกเครื่อง</span></div>`;
@@ -286,8 +297,9 @@ function fitSheets() {
   const avail = wrap.clientWidth - 24;
   $$('.sheet', wrap).forEach(sh => { sh.style.zoom = ''; const z = Math.min(1, avail / sh.offsetWidth); sh.style.zoom = z < 1 ? z.toFixed(3) : ''; });
 }
-window.addEventListener('resize', () => { if (S.view === 'course' && S.tab === 'print') fitSheets(); });
+window.addEventListener('resize', () => { if (S.view === 'course' && S.tab === 'print') fitSheets(); if ($('#r3world')) r3apply(); });
 function afterRender(c) {
+  if ($('#r3world')) r3apply();
   if (S.view === 'course' && S.tab === 'desc') setupEditor(c);
   if (S.view === 'course' && S.tab === 'print') fitSheets();
   // หัวตารางหลายแถว: คำนวณตำแหน่งติดด้านบนจากความสูงจริง
@@ -421,6 +433,12 @@ const ACT = {
     });
   },
   addTask() { taskDialog(null); },
+  quickCol() {
+    const c = cur(); if (!c) return; snap(c);
+    const n = c.tasks.length + 1, t = { id: newId('t'), name: 'งาน ' + n, full: null, unit: '', weight: 1, bonus: false };
+    c.tasks.push(t); c.scores[t.id] = {}; log('เพิ่มคอลัมน์ด่วน ' + t.name); touch(c); render();
+    setTimeout(() => { const el = document.querySelector(`[data-sc^="${t.id}|"]`); if (el) { el.scrollIntoView({ block: 'nearest', inline: 'center' }); el.focus(); } }, 50);
+  },
   task(v) { taskDialog(v); },
   addMid() {
     const c = cur(); if (c.units.some(u => u.isMid)) return; snap(c);
@@ -527,7 +545,7 @@ const ACT = {
     toast('ดาวน์โหลดไฟล์สำรองแล้ว');
   }
 };
-Object.assign(ACT, LIVE_ACT, TERM_ACT, ROSTER_ACT);
+Object.assign(ACT, LIVE_ACT, TERM_ACT, ROSTER_ACT, SEAT_ACT, R3_ACT);
 function coursePicker() {
   const list = activeCourses().sort((a, b) => (b.year - a.year) || thColl.compare(a.code, b.code)), arc = archivedCourses();
   const d = dialog('เลือกรายวิชา', `<div style="display:grid;gap:6px">${list.map(x => `<button class="btn ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(classOf(x))} · ${esc(termLabel(x))}</button>`).join('')}<button class="btn" data-pick="new">${ico('plus')} สร้างรายวิชา</button>${arc.length ? `<div class="side-label" style="color:var(--muted);margin-top:6px">คลังภาคเรียนเก่า</div>${arc.map(x => `<button class="btn ghost ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(classOf(x))} · ${esc(termLabel(x))}</button>`).join('')}` : ''}</div>`, []);
@@ -539,11 +557,15 @@ function renumberKeep(c) { Calc.activeStudents(c).forEach((s, i) => s.no = i + 1
 function taskDialog(tid) {
   const c = cur();
   const t = tid ? c.tasks.find(x => x.id === tid) : { name: '', full: 10, unit: (c.units.find(u => !u.isFinal) || c.units[0]).id, weight: 1, bonus: false };
-  const body = `
+  const loose = !t.unit || !c.units.some(u => u.id === t.unit);
+  /* คอลัมน์ด่วน: ถ้ายังไม่ตั้งคะแนนเต็ม เสนอคะแนนสูงสุดที่กรอกไว้ */
+  const maxGot = Math.max(0, ...Object.values(c.scores[t.id] || {}).map(Number).filter(x => !isNaN(x)));
+  const fullVal = Number(t.full) > 0 ? t.full : (maxGot || '');
+  const body = `${loose && tid ? `<div class="banner">${ico('alert')}<span>คอลัมน์นี้<b>ยังไม่นับคะแนน</b> เลือกหน่วยและใส่คะแนนเต็มแล้วกดบันทึก${maxGot ? ` (ระบบเสนอคะแนนเต็ม ${maxGot} ตามคะแนนสูงสุดที่กรอกไว้)` : ''}</span></div>` : ''}
     <label class="field"><span>ชื่องาน</span><input class="inp" id="tName" value="${esc(t.name)}" placeholder="เช่น ใบงานที่ 1, สอบย่อย, ชิ้นงานกลุ่ม"></label>
     <div class="form-grid">
-      <label class="field"><span>คะแนนเต็มของงานนี้</span><input class="inp" id="tFull" type="number" min="0" step="any" value="${esc(t.full)}"></label>
-      <label class="field"><span>อยู่ในหน่วย</span><select class="inp" id="tUnit">${c.units.map((u, i) => `<option value="${u.id}" ${u.id === t.unit ? 'selected' : ''}>${u.isFinal || u.isMid ? esc(u.name) : unitTag(c, u, 'long') + ' ' + esc(u.name)}</option>`).join('')}</select></label>
+      <label class="field"><span>คะแนนเต็มของงานนี้</span><input class="inp" id="tFull" type="number" min="0" step="any" value="${esc(fullVal)}" placeholder="เช่น 10"></label>
+      <label class="field"><span>อยู่ในหน่วย</span><select class="inp" id="tUnit">${loose ? `<option value="" selected>— ยังไม่กำหนดหน่วย (ยังไม่นับคะแนน) —</option>` : ''}${c.units.map((u, i) => `<option value="${u.id}" ${u.id === t.unit ? 'selected' : ''}>${u.isFinal || u.isMid ? esc(u.name) : unitTag(c, u, 'long') + ' ' + esc(u.name)}</option>`).join('')}</select></label>
       ${c.convert === 'weighted' ? `<label class="field"><span>น้ำหนักงาน (ส่วน)</span><input class="inp" id="tWeight" type="number" min="0" step="any" value="${esc(t.weight || 1)}"></label>` : ''}
     </div>
     <label class="row small"><input type="checkbox" id="tBonus" ${t.bonus ? 'checked' : ''}> คะแนนพิเศษ (บวกเพิ่มได้ แต่ไม่เกินคะแนนเต็มของหน่วย และไม่นับเป็นงานค้าง)</label>
@@ -553,14 +575,14 @@ function taskDialog(tid) {
   btns.push({ label: 'ยกเลิก', cls: 'ghost' });
   btns.push({
     label: tid ? 'บันทึก' : 'เพิ่มงาน', cls: 'pri', fn: d => {
-      const name = $('#tName', d).value.trim(), full = Number($('#tFull', d).value);
+      const name = $('#tName', d).value.trim(), full = Number($('#tFull', d).value), unit = $('#tUnit', d).value;
       if (!name) { toast('ใส่ชื่องานก่อน'); $('#tName', d).focus(); return false; }
-      if (!(full > 0)) { toast('คะแนนเต็มต้องมากกว่า 0'); $('#tFull', d).focus(); return false; }
+      if (!(full > 0) && unit) { toast('คะแนนเต็มต้องมากกว่า 0'); $('#tFull', d).focus(); return false; }
       snap(c);
       const obj = tid ? t : { id: newId('t') };
-      Object.assign(obj, { name, full, unit: $('#tUnit', d).value, bonus: $('#tBonus', d).checked, weight: $('#tWeight', d) ? Number($('#tWeight', d).value) || 1 : (obj.weight || 1) });
+      Object.assign(obj, { name, full: full > 0 ? full : null, unit, bonus: $('#tBonus', d).checked, weight: $('#tWeight', d) ? Number($('#tWeight', d).value) || 1 : (obj.weight || 1) });
       if (!tid) { c.tasks.push(obj); c.scores[obj.id] = {}; log('เพิ่มงาน ' + name + ' (เต็ม ' + full + ')'); } else log('แก้ไขงาน ' + name);
-      touch(c); render();
+      touch(c); render(); if (tid && loose && unit) toast('คอลัมน์ "' + name + '" นับคะแนนแล้ว');
     }
   });
   const d = dialog(tid ? 'แก้ไขงาน' : 'เพิ่มงานในสมุดคะแนน', body, btns);
@@ -576,8 +598,8 @@ function newCourseDialog() {
     <label class="field"><span>ชื่อวิชา</span><input class="inp" id="nName" placeholder="สังคมศึกษา 1"></label>
     <label class="field"><span>ชั้น</span><input class="inp" id="nGrade" placeholder="ม.1"></label>
     <label class="field"><span>ห้อง <small class="muted">(เว้นว่างได้ ถ้ามีห้องเดียว)</small></span><input class="inp" id="nRoom" value="" placeholder="เช่น 1"></label>
-    <label class="field"><span>ปีการศึกษา</span><input class="inp" id="nYear" type="number" value="${new Date().getFullYear() + 543 - (new Date().getMonth() < 4 ? 1 : 0)}"></label>
-    <label class="field"><span>ภาคเรียน</span><select class="inp" id="nTerm"><option value="1">1</option><option value="2">2</option><option value="ปี">ทั้งปี (ประถม)</option></select></label>
+    <label class="field"><span>ปีการศึกษา</span><input class="inp" id="nYear" type="number" value="${period().year}"></label>
+    <label class="field"><span>ภาคเรียน</span><select class="inp" id="nTerm"><option value="1" ${period().term === '1' ? 'selected' : ''}>1</option><option value="2" ${period().term === '2' ? 'selected' : ''}>2</option><option value="ปี">ทั้งปี (ประถม)</option></select></label>
     <label class="field"><span>เวลาเรียน (ชม.)</span><input class="inp" id="nHours" type="number" value="40"></label>
     <label class="field"><span>หน่วยกิต</span><input class="inp" id="nCred" type="number" step="0.5" value="1"></label>
     <label class="field"><span id="nMidL">คะแนนระหว่างภาค</span><input class="inp" id="nMid" type="number" min="0" max="100" value="${esc(S.settings.ratioMid)}"></label>
@@ -605,7 +627,7 @@ function newCourseDialog() {
       if (rk && $('#nRos', d).checked && !copied) c.students = courseStudentsFromRoster(rk);
       const cat = catalogFind(code); if (cat) { c.type = cat.type; c.group = 'สังคมศึกษา ศาสนา และวัฒนธรรม'; }
       c.log = [{ t: Date.now(), text: 'สร้างรายวิชา' + (fromId ? ' (คัดลอกจากวิชาเดิม)' : '') }];
-      S.courses.push(c); S.cur = c.id; S.view = 'course'; S.tab = c.students.length ? 'book' : 'students'; touch(c); render(); toast('สร้างรายวิชาแล้ว');
+      S.courses.push(c); S.cur = c.id; S.view = 'course'; S.tab = c.students.length ? 'book' : 'students'; touch(c); render(); if (inPeriod(c)) toast('สร้างรายวิชาแล้ว'); else toast('สร้างรายวิชาแล้ว แต่เป็นของ' + (isYearly(c) ? 'ปีการศึกษา ' + c.year : 'ภาคเรียนที่ ' + c.term + '/' + c.year) + ' ไม่ใช่ภาคปัจจุบัน', { label: 'เปลี่ยนภาคเรียน', fn: () => { setPeriod({ year: c.year, term: isYearly(c) ? period().term : c.term }); render(); } });
     }
   }], { wide: true });
   /* เติมสัดส่วนตามระดับ (ประถม/มัธยม) จนกว่าครูจะแก้เอง */
@@ -757,7 +779,7 @@ document.addEventListener('input', e => {
     if (v === null) { el.classList.add('over'); return; }
     const t = c.tasks.find(x => x.id === tid);
     (c.scores[tid] = c.scores[tid] || {})[sid] = v;
-    const td = el.parentElement; td.classList.toggle('blank', v === '' && !t.bonus); td.classList.toggle('over', v !== '' && v > Number(t.full)); el.classList.remove('over');
+    const td = el.parentElement; td.classList.toggle('blank', v === '' && !t.bonus); td.classList.toggle('over', v !== '' && Number(t.full) > 0 && v > Number(t.full)); el.classList.remove('over');
     updateBookRow(c, sid); const av = $(`[data-avg="${tid}"]`); if (av) av.textContent = avgTask(c, t);
     touch(c); return;
   }
@@ -1053,7 +1075,9 @@ async function loadAll() {
     if (!seeded) { const list = makeDemoCourses(S.settings); for (const c of list) { S.courses.push(c); await saveNow(c); } if (!S.settings.tt) { S.settings.tt = makeDemoTimetable(list); touchSettings(); } try { localStorage.setItem('samutwadphon:seeded', '1'); } catch (e) { } }
   }
   S.cur = S.courses.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0]?.id || null;
+  if (!S.settings.period) { S.settings.period = guessPeriod(); touchSettings(); }
   S.view = 'home';
+  S.lastSavedToast = Date.now() - 2000; /* ไม่แจ้งตอนระบบบันทึกเองช่วง 3 วินาทีแรกที่เปิดระบบ */
   render();
   if (Store.watch && !S.unwatch) { try { S.unwatch = Store.watch(onRemoteCourse, onRemoteSettings); } catch (e) { console.warn(e); } }
   setTimeout(maybeInstallBanner, 2500);

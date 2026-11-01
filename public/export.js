@@ -22,8 +22,8 @@ function excelSheets(c, st) {
 
   /* 2) สมุดคะแนนดิบ */
   const cols = bookColumns(c);
-  const r2 = [['เลขที่', 'เลขประจำตัว', 'คำนำหน้า', 'ชื่อ', 'สกุล'].concat(cols.map(({ t, u }) => `${unitTag(c, u, 'short')} · ${t.name}${t.bonus ? ' (พิเศษ)' : ''}`))];
-  r2.push(['', '', '', 'คะแนนเต็ม', ''].concat(cols.map(({ t }) => Number(t.full) || 0)));
+  const r2 = [['เลขที่', 'เลขประจำตัว', 'คำนำหน้า', 'ชื่อ', 'สกุล'].concat(cols.map(({ t, u }) => `${u.loose ? 'ยังไม่กำหนดหน่วย' : unitTag(c, u, 'short')} · ${t.name}${t.bonus ? ' (พิเศษ)' : ''}`))];
+  r2.push(['', '', '', 'คะแนนเต็ม', ''].concat(cols.map(({ t }) => Number(t.full) || '')));
   studs.forEach(s => r2.push(id(s).concat(cols.map(({ t }) => { const v = Calc.num((c.scores[t.id] || {})[s.id]); return v === null ? '' : v; }))));
 
   /* 3) เวลาเรียนรายคาบ */

@@ -91,11 +91,11 @@ function viewLive() {
   </div>
   <div class="live-grid">
     <div class="card live-main">
-      <div class="card-h"><div class="seg"><button data-act="liveMode" data-v="att" class="${L.mode !== 'bonus' ? 'on' : ''}">${ico('check')} เช็คชื่อ</button><button data-act="liveMode" data-v="bonus" class="${L.mode === 'bonus' ? 'on' : ''}">${ico('star')} คะแนนพิเศษ</button></div>
-        <span class="note">${L.mode === 'bonus' ? 'แตะชื่อเพื่อให้ +' + (Number(S.settings.bonusPts) || 1) + ' · ปุ่ม − เพื่อคืน' : 'ทุกคนเริ่มเป็น "มา" · แตะปุ่มสถานะของคนที่ไม่มา · ด้านขวาคือยอดรวมทุกคาบของแต่ละคน'}</span></div>
+      <div class="card-h"><div class="seg"><button data-act="liveMode" data-v="att" class="${L.mode !== 'bonus' && L.mode !== 'seat' ? 'on' : ''}">${ico('check')} เช็คชื่อ</button><button data-act="liveMode" data-v="seat" class="${L.mode === 'seat' ? 'on' : ''}">${ico('grid')} ผังห้อง</button><button data-act="liveMode" data-v="bonus" class="${L.mode === 'bonus' ? 'on' : ''}">${ico('star')} คะแนนพิเศษ</button></div>
+        <span class="note">${L.mode === 'seat' ? ((S.seatView || '3d') === '3d' ? 'แตะนักเรียนเพื่อเช็คชื่อ · ลากเพื่อหมุนห้อง' : 'มองจากหน้าห้อง · แถวบนสุดคือแถวหน้า') : L.mode === 'bonus' ? 'แตะชื่อเพื่อให้ +' + (Number(S.settings.bonusPts) || 1) + ' · ปุ่ม − เพื่อคืน' : 'ทุกคนเริ่มเป็น "มา" · แตะปุ่มสถานะของคนที่ไม่มา · ด้านขวาคือยอดรวมทุกคาบของแต่ละคน'}</span></div>
       ${L.mode === 'bonus' ? `<div class="reason-row">${bonusReasons().map((r, i) => `<button class="chip ${S.liveReason === i ? 'acc' : ''}" data-act="liveReason" data-v="${i}">${esc(r)}</button>`).join('')}<button class="chip" data-act="liveReasonEdit">${ico('pen')} แก้เหตุผล</button></div>
         ${gset ? `<div class="reason-row"><span class="note">ให้ทั้งกลุ่ม:</span>${setGroups(gset).map((g, i) => `<button class="chip grp" data-hue="${GROUP_HUES[i % GROUP_HUES.length]}" data-act="liveGroupBonus" data-v="${i}">กลุ่ม ${i + 1}</button>`).join('')}</div>` : ''}` : ''}
-      ${studs.length ? `<div class="${L.mode === 'bonus' ? 'lv-grid' : 'att-list'}">${tiles}</div>` : `<div class="empty"><h3>ยังไม่มีรายชื่อนักเรียน</h3><button class="btn pri" data-act="go" data-v="${c.id}|students">วางรายชื่อ</button></div>`}
+      ${studs.length && L.mode === 'seat' ? seatGrid(c, se) : studs.length ? `<div class="${L.mode === 'bonus' ? 'lv-grid' : 'att-list'}">${tiles}</div>` : `<div class="empty"><h3>ยังไม่มีรายชื่อนักเรียน</h3><button class="btn pri" data-act="go" data-v="${c.id}|students">วางรายชื่อ</button></div>`}
     </div>
     <div class="card live-side">
       <div class="card-h"><h3>บันทึกการสอนคาบนี้</h3>${per ? `<span class="note">${esc(per.s)}–${esc(per.e)} น.</span>` : ''}</div>
@@ -265,7 +265,7 @@ const LIVE_ACT = {
     const d = dialog(studentName(s), `<div class="att-pick">${ATT_STATES.map(([k, kind]) => `<button class="btn ${k === cur0 ? 'pri' : ''}" data-st="${k}"><span class="chip ${kind}">${k}</span></button>`).join('')}</div>`, []);
     $$('[data-st]', d).forEach(b => b.onclick = () => { d.close(); d.remove(); liveSetStatus(sid, b.dataset.st); });
   },
-  liveAllPresent() { const c = liveCourse(); snap(c); const se = ensureSession(c); se.att = {}; touch(c); render(); toast('ตั้งให้ทุกคนมาเรียน'); },
+  liveAllPresent() { const c = liveCourse(); snap(c); const se = ensureSession(c); se.att = {}; if (se.inRoom) Calc.activeStudents(c).forEach(s => { se.inRoom[s.id] = 1; }); touch(c); render(); toast('ตั้งให้ทุกคนมาเรียน'); },
   liveBonus(sid) {
     const c = liveCourse(); snap(c); const se = ensureSession(c), pts = Number(S.settings.bonusPts) || 1;
     se.bonus[sid] = (se.bonus[sid] || 0) + pts; se.bonusLog.push({ sid, n: pts, reason: bonusReasons()[S.liveReason || 0] || '', t: Date.now() });
@@ -287,7 +287,7 @@ const LIVE_ACT = {
     const c = liveCourse(); const se0 = findSession(c, S.live.date, S.live.period);
     const unit = se0 ? se0.unit : (($('#liveUnit') || {}).value);
     const due = dateId(new Date(Date.now() + 7 * 86400000));
-    dialog('มอบงาน', `<label class="field"><span>ชื่องาน</span><input class="inp" id="asName" placeholder="เช่น ใบงานที่ 3"></label><div class="form-grid"><label class="field"><span>คะแนนเต็ม</span><input class="inp" type="number" id="asFull" min="1" value="10"></label><label class="field"><span>กำหนดส่ง</span><input class="inp" type="date" id="asDue" value="${due}"></label></div><p class="note">งานนี้จะขึ้นเป็นคอลัมน์ใหม่ในสมุดคะแนน หน่วยเดียวกับคาบนี้ และนับคนที่ยังไม่ส่งให้บนหน้าแรก</p>`,
+    dialog('สั่งงาน / การบ้าน', `<label class="field"><span>ชื่องาน</span><input class="inp" id="asName" placeholder="เช่น ใบงานที่ 3"></label><div class="form-grid"><label class="field"><span>คะแนนเต็ม</span><input class="inp" type="number" id="asFull" min="1" value="10"></label><label class="field"><span>กำหนดส่ง</span><input class="inp" type="date" id="asDue" value="${due}"></label></div><p class="note">งานนี้จะขึ้นเป็นคอลัมน์ใหม่ในสมุดคะแนน หน่วยเดียวกับคาบนี้ และนับคนที่ยังไม่ส่งให้บนหน้าแรก</p>`,
       [{ label: 'ยกเลิก', cls: 'ghost' }, { label: 'มอบงาน', cls: 'pri', fn: d => {
         const name = $('#asName', d).value.trim(), full = Number($('#asFull', d).value);
         if (!name) { toast('ใส่ชื่องาน'); return false; } if (!(full > 0)) { toast('คะแนนเต็มต้องมากกว่า 0'); return false; }

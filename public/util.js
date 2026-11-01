@@ -6,7 +6,7 @@ const newId = (p = '') => p + Math.random().toString(36).slice(2, 8) + Date.now(
 const clone = o => JSON.parse(JSON.stringify(o));
 const thColl = new Intl.Collator('th');
 const TH_DIGITS = false;
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v30';
 const APP_CREDIT = '© 2569 ClassFolio · นรากรณ์ จูงาม · สงวนลิขสิทธิ์';
 const APP_FREE = 'ใช้ได้ฟรีสำหรับครู';
 
@@ -50,6 +50,7 @@ const ico = n => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICON
 const TABS = [
   ['overview', 'ภาพรวมวิชา', 'grid', 'indigo'],
   ['book', 'สมุดคะแนน', 'book', 'blue'],
+  ['conv', 'คะแนน ปพ.5', 'layers', 'indigo'],
   ['teach', 'บันทึกการสอน', 'clipboard', 'teal'],
   ['structure', 'โครงสร้างรายวิชา', 'layers', 'violet'],
   ['desc', 'คำอธิบายรายวิชา', 'pen', 'pink'],
