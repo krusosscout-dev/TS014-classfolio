@@ -10,6 +10,37 @@ function bonusReasons() { if (!S.settings.bonusReasons) S.settings.bonusReasons 
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function isGirl(s) { return /(ด\.ญ\.|เด็กหญิง|นางสาว|น\.ส\.|นาง)/.test(s.prefix || ''); }
 /* Firestore ห้ามเก็บ array ซ้อน array: เก็บชุดกลุ่มเป็น [{m:[...]}] แล้วแปลงกลับตอนใช้ */
+/* บันทึกกิจกรรมลงคาบ: สุ่มชื่อ · จัดกลุ่ม (se.acts) — คะแนนพิเศษอยู่ใน se.bonusLog อยู่แล้ว */
+function toolsSeKey(c) { const m = S.toolsSe = S.toolsSe || {}; return m[c.id] || 'live'; }
+function toolsSe(c, create) {
+  const k = toolsSeKey(c); if (k === 'none') return null;
+  if (k === 'live') { const L = liveState(); return create ? ensureSession(c) : findSession(c, L.date, L.period); }
+  return (c.sessions || []).find(x => x.id === k) || null;
+}
+function seLabel(se) { return se ? `${thaiDate(se.date)} คาบ ${se.period}${se.topic ? ' · ' + se.topic : ''}` : ''; }
+function logAct(se, a) { if (se) (se.acts = se.acts || []).push(Object.assign({ t: Date.now() }, a)); }
+function groupSetFor(c, se) { const sets = c.groupSets || []; return (se && sets.slice().reverse().find(x => x.se === se.id)) || sets[sets.length - 1] || null; }
+function actLog(c, se) {
+  if (!se) return '';
+  const studs = c.students || [], nm = id => { const x = studs.find(s => s.id === id); return x ? x.no + ' ' + (x.first || shortName(x)) : '?'; };
+  const hm = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  const items = (se.acts || []).map(a => ({ t: a.t, hue: a.k === 'pick' ? 'violet' : 'teal', ic: a.k === 'pick' ? 'target' : 'users',
+      txt: a.k === 'pick' ? `สุ่มได้ <b>${(a.s || []).map(nm).map(esc).join(', ')}</b>` : `จัดกลุ่ม <b>${esc(a.name || '')}</b> ${a.n || ''} กลุ่ม` }))
+    .concat((() => { /* คะแนนพิเศษทั้งกลุ่มรวมเป็นบรรทัดเดียว */
+      const out = [];
+      (se.bonusLog || []).slice().sort((x, y) => (x.t || 0) - (y.t || 0)).forEach(b => {
+        const g = /\(กลุ่ม (\d+)\)$/.exec(b.reason || ''), last = out[out.length - 1];
+        if (g && last && last.g === g[1] && last.reason === b.reason && Math.abs((b.t || 0) - last.t) < 3000) { last.sids.push(b.sid); return; }
+        out.push({ t: b.t || 0, g: g ? g[1] : null, reason: b.reason || '', n: b.n, sids: [b.sid] });
+      });
+      return out.map(x => ({ t: x.t, hue: 'amber', ic: 'star', txt: x.g
+        ? `<b>กลุ่ม ${x.g}</b> ${x.n > 0 ? '+' : ''}${x.n} ทุกคน (${x.sids.length} คน)${x.reason.replace(/ ?\(กลุ่ม \d+\)$/, '') ? ' · ' + esc(x.reason.replace(/ ?\(กลุ่ม \d+\)$/, '')) : ''}`
+        : `<b>${esc(nm(x.sids[0]))}</b> ${x.n > 0 ? '+' : ''}${x.n}${x.reason ? ' · ' + esc(x.reason) : ''}` }));
+    })())
+    .sort((a, b) => b.t - a.t);
+  if (!items.length) return '<p class="note" style="margin:0">ยังไม่มีการสุ่ม จัดกลุ่ม หรือให้คะแนนพิเศษในคาบนี้</p>';
+  return `<div class="act-log">${items.slice(0, 40).map(x => `<div class="act-i" data-hue="${x.hue}"><span class="ic">${ico(x.ic)}</span><span class="tx">${x.txt}</span><time>${hm(x.t || 0)}</time></div>`).join('')}${items.length > 40 ? `<p class="note">และอีก ${items.length - 40} รายการ</p>` : ''}</div>`;
+}
 function setGroups(x) { return (x && x.groups || []).map(g => Array.isArray(g) ? g : (g && g.m) || []); }
 function shortName(s) { return [s.prefix, s.first].filter(Boolean).join(''); }
 
@@ -72,12 +103,13 @@ function viewLive() {
   const unitTotals = {};
   if (se && se.unit) sessionsOf(c).filter(x => x.unit === se.unit).forEach(x => Object.entries(x.bonus || {}).forEach(([sid, n]) => unitTotals[sid] = (unitTotals[sid] || 0) + n));
   const sets = c.groupSets || [];
-  const gset = sets[sets.length - 1];
+  const gset = groupSetFor(c, se);
   const tiles = studs.map(s => {
     const st = se ? ((se.att || {})[s.id] || 'มา') : 'มา', kind = ATT_STATES.find(x => x[0] === st)[1];
+    const wait = L.mode !== 'bonus' && typeof r3queued === 'function' && r3queued(se, s.id);
     const b = se ? ((se.bonus || {})[s.id] || 0) : 0;
     if (L.mode === 'bonus') return `<div class="lv-tile b ${absentToday.has(s.id) ? 'dim' : ''}"><button class="lv-main" data-act="liveBonus" data-v="${s.id}"><span class="lv-no">${s.no}</span><span class="lv-name">${esc(shortName(s))}<small>รวม ${unitTotals[s.id] || 0} คะแนน</small></span><span class="lv-pts${b ? ' on' : ''}">${b ? '+' + b : '+'}</span></button>${b ? `<button class="lv-minus" data-act="liveBonusMinus" data-v="${s.id}" aria-label="ลดคะแนน ${esc(shortName(s))}">−</button>` : ''}</div>`;
-    return `<div class="att-row${st !== 'มา' ? ' marked' : ''}" data-hue="${ATT_HUES[st]}"><span class="lv-no">${s.no}</span><span class="att-name"><b>${esc(studentName(s))}</b></span><div class="att-btns" role="radiogroup" aria-label="สถานะของ ${esc(shortName(s))}">${ATT_STATES.map(([k]) => `<button class="${k === st ? 'on' : ''}" data-hue="${ATT_HUES[k]}" data-act="liveSet" data-v="${s.id}|${k}" role="radio" aria-checked="${k === st}">${k}</button>`).join('')}</div>${attStat(c, s.id)}</div>`;
+    return `<div class="att-row${st !== 'มา' ? ' marked' : ''}${wait ? ' wait' : ''}" data-hue="${ATT_HUES[st]}"><span class="lv-no">${s.no}</span><span class="att-name"><b>${esc(studentName(s))}</b>${wait ? '<small class="wait-tag">ยังไม่เช็ค · ยืนรอหน้าห้อง</small>' : ''}</span><div class="att-btns" role="radiogroup" aria-label="สถานะของ ${esc(shortName(s))}">${ATT_STATES.map(([k]) => `<button class="${k === st && !wait ? 'on' : ''}" data-hue="${ATT_HUES[k]}" data-act="liveSet" data-v="${s.id}|${k}" role="radio" aria-checked="${k === st}">${k}</button>`).join('')}</div>${attStat(c, s.id)}</div>`;
   }).join('');
   const tasks = se ? (se.tasks || []).map(id => c.tasks.find(t => t.id === id)).filter(Boolean) : [];
   return `
@@ -104,6 +136,8 @@ function viewLive() {
       <div class="field"><span>งานที่มอบในคาบนี้</span>
         <div class="task-list">${tasks.map(t => `<div class="task-chip"><span><b>${esc(t.name)}</b><small>เต็ม ${esc(t.full)}${t.due ? ' · ส่ง ' + esc(thaiDate(t.due)) : ''}</small></span><button class="btn sm ghost" data-act="task" data-v="${t.id}">แก้</button></div>`).join('') || '<p class="note">ยังไม่ได้มอบงาน</p>'}</div>
         <button class="btn sm" data-act="liveAssign">${ico('plus')} มอบงาน</button></div>
+      <div class="field"><span>สื่อการสอนคาบนี้</span>${mediaBlock(c, se)}</div>
+      ${se ? `<div class="field"><span>กิจกรรมในคาบนี้ (สุ่มชื่อ · จัดกลุ่ม · คะแนนพิเศษ)</span>${actLog(c, se)}</div>` : ''}
       <label class="field"><span>บันทึกหลังสอน (ผลที่เกิด ปัญหา แนวทางแก้)</span><textarea class="inp" id="liveNote" rows="4" placeholder="ไม่บังคับ">${esc(se ? se.note : '')}</textarea></label>
       ${se ? `<button class="btn sm ghost danger" data-act="liveDelete">${ico('trash')} ลบบันทึกคาบนี้</button>` : '<p class="note">แตะชื่อหรือพิมพ์ช่องใดก็ได้ ระบบจะเปิดบันทึกคาบนี้ให้เอง</p>'}
     </div>
@@ -123,6 +157,9 @@ function attStat(c, sid) {
 function liveSetStatus(sid, st) {
   const c = liveCourse(); snap(c); const se = ensureSession(c);
   if (st === 'มา') delete se.att[sid]; else se.att[sid] = st;
+  /* เช็คจากรายชื่อ = เดินเข้าห้อง 3 มิติด้วย ไม่ต้องเช็คซ้ำ */
+  if (typeof r3queued === 'function' && r3queued(se, sid)) { if (!se.inRoom) se.inRoom = {}; if (st === 'มา' && typeof r3walkIn === 'function') r3walkIn(c, se, [sid]); se.inRoom[sid] = 1; }
+  else { if (!se.inRoom) se.inRoom = {}; se.inRoom[sid] = 1; }
   touch(c); render();
 }
 
@@ -175,8 +212,10 @@ function viewTools() {
   const head = `<div class="card bar"><div class="row">
     <div class="seg"><button data-act="toolsMode" data-v="random" class="${mode === 'random' ? 'on' : ''}">${ico('target')} สุ่มชื่อ</button><button data-act="toolsMode" data-v="group" class="${mode === 'group' ? 'on' : ''}">${ico('users')} จับกลุ่ม</button></div>
     <select class="inp" id="toolsCourse" style="width:auto;max-width:100%">${activeCourses().map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)} · ${esc(classOf(x))}</option>`).join('')}</select>
+    <label class="row small tools-se">${ico('calendar')}<span>บันทึกลงคาบ</span><select class="inp" id="toolsSe">${(() => { const L = liveState(), k = toolsSeKey(c), list = sessionsOf(c).slice().sort((a, b) => (b.date + String(b.period).padStart(2, '0')).localeCompare(a.date + String(a.period).padStart(2, '0'))).slice(0, 15);
+      return `<option value="live" ${k === 'live' ? 'selected' : ''}>คาบที่เปิดใน Live Class · ${esc(thaiDate(L.date))} คาบ ${L.period}</option>` + list.filter(x => !(x.date === L.date && Number(x.period) === Number(L.period))).map(x => `<option value="${x.id}" ${k === x.id ? 'selected' : ''}>${esc(seLabel(x))}</option>`).join('') + `<option value="none" ${k === 'none' ? 'selected' : ''}>ไม่บันทึกลงคาบ</option>`; })()}</select></label>
     <button class="btn sm" data-act="toolsPresent" style="margin-left:auto">${ico('grid')} เต็มจอ</button>
-  </div>${absent.size ? `<p class="note" style="margin-top:8px">วันนี้ขาด ${absent.size} คน (จาก Live Class) · ระบบข้ามให้เมื่อเลือก "ข้ามคนที่ขาดวันนี้"</p>` : ''}</div>`;
+  </div>${(() => { const se = toolsSe(c, false); return se && ((se.acts || []).length || (se.bonusLog || []).length) ? `<details class="tools-log"><summary>กิจกรรมที่บันทึกไว้ในคาบ ${esc(seLabel(se))}</summary>${actLog(c, se)}</details>` : ''; })()}${absent.size ? `<p class="note" style="margin-top:8px">วันนี้ขาด ${absent.size} คน (จาก Live Class) · ระบบข้ามให้เมื่อเลือก "ข้ามคนที่ขาดวันนี้"</p>` : ''}</div>`;
   if (mode === 'random') {
     const R = S.rand = S.rand || {};
     const drawn = (R.drawn = R.drawn || {})[c.id] = R.drawn[c.id] || [];
@@ -200,7 +239,7 @@ function viewTools() {
       <label class="row small" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="grpSkip" ${G.skipAbsent ? 'checked' : ''}> ไม่รวมคนที่ขาดวันนี้</label>
       <button class="btn pri" data-act="grpMake" style="align-self:end">${ico('users')} จัดกลุ่ม</button>
     </div>
-    ${sets.length ? `<div class="reason-row" style="margin-top:12px"><span class="note">ชุดที่บันทึกไว้:</span>${sets.map((x, i) => `<button class="chip" data-act="grpLoad" data-v="${i}">${esc(x.name)}</button>`).join('')}</div>` : ''}
+    ${sets.length ? `<div class="reason-row" style="margin-top:12px"><span class="note">ชุดที่บันทึกไว้:</span>${sets.map((x, i) => `<button class="chip" data-act="grpLoad" data-v="${i}">${esc(x.name)}${x.date ? ` <small>· ${esc(thaiDate(x.date).split(' ').slice(0, 2).join(' '))} คาบ ${x.period}</small>` : ''}</button>`).join('')}</div>` : ''}
   </div>
   ${groups ? `<div class="card tool-stage" id="toolStage"><div class="card-h"><h3>${groups.length} กลุ่ม</h3><span class="note">${G.pick ? 'แตะกลุ่มที่ต้องการย้ายไป' : 'แตะชื่อแล้วแตะกลุ่มเพื่อย้าย · คอมลากวางได้'}</span><button class="btn sm" data-act="grpSave">บันทึกชุดกลุ่มนี้</button></div>
     <div class="grp-grid">${groups.map((g, i) => `<div class="grp" data-hue="${GROUP_HUES[i % GROUP_HUES.length]}" data-gi="${i}" data-act="grpDrop" data-v="${i}"><div class="grp-h"><b>กลุ่ม ${i + 1}</b><span>${g.length} คน</span></div>${g.map(id => { const s = studs.find(x => x.id === id); return s ? `<button class="grp-m ${G.pick === id ? 'pick' : ''}" draggable="true" data-sid="${id}" data-act="grpPick" data-v="${id}">${s.no}. ${esc(shortName(s))}</button>` : ''; }).join('')}</div>`).join('')}</div></div>` : ''}`;
@@ -234,7 +273,7 @@ function randGo(c) {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let t = 0; const iv = setInterval(() => {
     t++; if (box) box.innerHTML = Array.from({ length: n }, () => { const s = pool[Math.floor(Math.random() * pool.length)]; return `<div class="rand-card spin"><span>เลขที่ ${s.no}</span><b>${esc(shortName(s))}</b><small>${esc(s.last || '')}</small></div>`; }).join('');
-    if (t > (reduce ? 0 : 16)) { clearInterval(iv); R.last = pick.map(s => s.id); if (R.noRepeat) R.drawn[c.id] = R.drawn[c.id].concat(R.last); render(); const cards = $$('.rand-card'); cards.forEach(x => x.classList.add('hit')); }
+    if (t > (reduce ? 0 : 16)) { clearInterval(iv); R.last = pick.map(s => s.id); if (R.noRepeat) R.drawn[c.id] = R.drawn[c.id].concat(R.last); const se = toolsSe(c, true); if (se) { logAct(se, { k: 'pick', s: R.last.slice() }); touch(c); } render(); const cards = $$('.rand-card'); cards.forEach(x => x.classList.add('hit')); }
   }, 70);
 }
 
@@ -265,7 +304,7 @@ const LIVE_ACT = {
     const d = dialog(studentName(s), `<div class="att-pick">${ATT_STATES.map(([k, kind]) => `<button class="btn ${k === cur0 ? 'pri' : ''}" data-st="${k}"><span class="chip ${kind}">${k}</span></button>`).join('')}</div>`, []);
     $$('[data-st]', d).forEach(b => b.onclick = () => { d.close(); d.remove(); liveSetStatus(sid, b.dataset.st); });
   },
-  liveAllPresent() { const c = liveCourse(); snap(c); const se = ensureSession(c); se.att = {}; if (se.inRoom) Calc.activeStudents(c).forEach(s => { se.inRoom[s.id] = 1; }); touch(c); render(); toast('ตั้งให้ทุกคนมาเรียน'); },
+  liveAllPresent() { const c = liveCourse(); snap(c); const se = ensureSession(c); se.att = {}; se.inRoom = se.inRoom || {}; Calc.activeStudents(c).forEach(s => { se.inRoom[s.id] = 1; }); touch(c); render(); toast('ตั้งให้ทุกคนมาเรียน'); },
   liveBonus(sid) {
     const c = liveCourse(); snap(c); const se = ensureSession(c), pts = Number(S.settings.bonusPts) || 1;
     se.bonus[sid] = (se.bonus[sid] || 0) + pts; se.bonusLog.push({ sid, n: pts, reason: bonusReasons()[S.liveReason || 0] || '', t: Date.now() });
@@ -274,8 +313,8 @@ const LIVE_ACT = {
   },
   liveBonusMinus(sid) { const c = liveCourse(); snap(c); const se = ensureSession(c), pts = Number(S.settings.bonusPts) || 1; se.bonus[sid] = Math.max(0, (se.bonus[sid] || 0) - pts); if (!se.bonus[sid]) delete se.bonus[sid]; se.bonusLog.push({ sid, n: -pts, reason: 'คืนคะแนน', t: Date.now() }); syncBonus(c); touch(c); render(); },
   liveGroupBonus(i) {
-    const c = liveCourse(), g = (c.groupSets || []).slice(-1)[0]; if (!g) return; snap(c); const se = ensureSession(c), pts = Number(S.settings.bonusPts) || 1;
-    (setGroups(g)[Number(i)] || []).forEach(sid => { if (!c.students.some(s => s.id === sid && s.status !== 'out')) return; se.bonus[sid] = (se.bonus[sid] || 0) + pts; se.bonusLog.push({ sid, n: pts, reason: (bonusReasons()[S.liveReason || 0] || '') + ' (กลุ่ม)', t: Date.now() }); });
+    const c = liveCourse(), g = groupSetFor(c, findSession(c, S.live.date, S.live.period)); if (!g) return; snap(c); const se = ensureSession(c), pts = Number(S.settings.bonusPts) || 1;
+    (setGroups(g)[Number(i)] || []).forEach(sid => { if (!c.students.some(s => s.id === sid && s.status !== 'out')) return; se.bonus[sid] = (se.bonus[sid] || 0) + pts; se.bonusLog.push({ sid, n: pts, reason: (bonusReasons()[S.liveReason || 0] || '') + ' (กลุ่ม ' + (Number(i) + 1) + ')', t: Date.now() }); });
     syncBonus(c); touch(c); render(); toast('กลุ่ม ' + (Number(i) + 1) + ' ได้ +' + pts + ' ทุกคน');
   },
   liveReason(i) { S.liveReason = Number(i); render(); },
@@ -311,7 +350,15 @@ const LIVE_ACT = {
   grpDrop(i) { const c = toolsCourse(), G = S.grp, gs = (G.cur || {})[c.id]; if (!G.pick || !gs) return; gs.forEach(g => { const k = g.indexOf(G.pick); if (k >= 0) g.splice(k, 1); }); gs[Number(i)].push(G.pick); G.pick = null; render(); },
   grpSave() {
     const c = toolsCourse(), gs = (S.grp.cur || {})[c.id]; if (!gs) return;
-    const d0 = dialog('บันทึกชุดกลุ่ม', `<label class="field"><span>ชื่อชุด</span><input class="inp" id="gsName" value="กลุ่ม ${esc(thaiDate(new Date()))}"></label><p class="note">ชุดล่าสุดใช้ให้คะแนนพิเศษทั้งกลุ่มใน Live Class ได้</p>`, [{ label: 'ยกเลิก', cls: 'ghost' }, { label: 'บันทึก', cls: 'pri', fn: d => { snap(c); c.groupSets = (c.groupSets || []).concat({ id: newId('g'), name: $('#gsName', d).value.trim() || 'ชุดกลุ่ม', groups: gs.map(m => ({ m: m.slice() })), at: Date.now() }).slice(-10); log('บันทึกชุดกลุ่ม'); touch(c); render(); toast('บันทึกชุดกลุ่มแล้ว'); } }]);
+    const se0 = toolsSe(c, false), L = liveState(), k = toolsSeKey(c);
+    const where = k === 'none' ? 'ไม่ผูกกับคาบ' : se0 ? seLabel(se0) : `${thaiDate(L.date)} คาบ ${L.period} (คาบที่เปิดใน Live Class)`;
+    const d0 = dialog('บันทึกชุดกลุ่ม', `<label class="field"><span>ชื่อชุด</span><input class="inp" id="gsName" value="กลุ่ม ${esc(thaiDate(new Date()))}"></label><p class="note">บันทึกเป็นกลุ่มของ <b>${esc(where)}</b> (เปลี่ยนได้ที่ "บันทึกลงคาบ" ด้านบน) · ใน Live Class คาบนั้นจะใช้ชุดนี้ให้คะแนนพิเศษทั้งกลุ่ม</p>`, [{ label: 'ยกเลิก', cls: 'ghost' }, { label: 'บันทึก', cls: 'pri', fn: d => {
+      snap(c); const se = toolsSe(c, true), name = $('#gsName', d).value.trim() || 'ชุดกลุ่ม';
+      const set = { id: newId('g'), name, groups: gs.map(m => ({ m: m.slice() })), at: Date.now() };
+      if (se) Object.assign(set, { se: se.id, date: se.date, period: Number(se.period) });
+      c.groupSets = (c.groupSets || []).concat(set).slice(-20);
+      logAct(se, { k: 'group', name, n: gs.length, set: set.id }); log('บันทึกชุดกลุ่ม ' + name); touch(c); render(); toast(se ? 'บันทึกกลุ่มของ ' + seLabel(se) + ' แล้ว' : 'บันทึกชุดกลุ่มแล้ว');
+    } }]);
   },
   grpLoad(i) { const c = toolsCourse(), x = (c.groupSets || [])[Number(i)]; if (!x) return; ((S.grp.cur = S.grp.cur || {}))[c.id] = setGroups(x).map(m => m.slice()); render(); }
 };
@@ -324,6 +371,7 @@ document.addEventListener('change', e => {
   if (el.id === 'livePeriod') { S.live.period = Number(el.value); render(); }
   if (el.id === 'liveUnit') { const c = liveCourse(); snap(c); const se = ensureSession(c); se.unit = el.value; syncBonus(c); touch(c); render(); }
   if (el.id === 'toolsCourse') { S.toolsCid = el.value; render(); }
+  if (el.id === 'toolsSe') { const c = toolsCourse(); (S.toolsSe = S.toolsSe || {})[c.id] = el.value; render(); }
   if (el.id === 'randN') { S.rand.n = Number(el.value); }
   if (el.id === 'randNoRep') { S.rand.noRepeat = el.checked; render(); }
   if (el.id === 'randSkip') { S.rand.skipAbsent = el.checked; render(); }

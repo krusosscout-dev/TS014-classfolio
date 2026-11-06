@@ -3,7 +3,7 @@
 คู่มือสำหรับ AI ที่แก้โค้ดต่อ เว็บแบบ static (ไม่มีขั้นตอน build) JavaScript ธรรมดา ไม่มีเฟรมเวิร์ก
 
 ## ลำดับการโหลด (index.html)
-firebase-config.js → calc.js → sync.js → platform.js → util.js → demo.js → xlsx.js → print.js → views.js → timetable.js → live.js → export.js → term.js → catalog.js → roster.js → seat.js → room3d.js → app.js
+firebase-config.js → calc.js → sync.js → platform.js → util.js → demo.js → xlsx.js → print.js → views.js → timetable.js → live.js → export.js → term.js → catalog.js → roster.js → seat.js → room3d.js → media.js → app.js
 ทุกไฟล์ (ยกเว้น calc.js, sync.js, platform.js, xlsx.js) ประกาศฟังก์ชันระดับ global ใช้ร่วมกัน
 
 ## หน้าที่ของแต่ละไฟล์
@@ -104,3 +104,10 @@ course = { id, code, name, group, type, grade, room, year, term('1'|'2'|'ปี'
 ## ทดสอบ
 สคริปต์ Playwright ใน scratchpad: audit.py/audit2.py (3 ขนาดจอ), fb/test.py (Firebase จำลอง), fb/two.py (2 เครื่องพร้อมกัน), fb/legacy.py (ย้ายข้อมูลเก่า), p4test.py (ความสูงหน้าพิมพ์), xl.py (Excel), nt.py (ภาคเรียนใหม่)
 เปิด `public/index.html` ตรงจากไฟล์ได้ (โหมดทดลอง + ข้อมูลตัวอย่าง) · ตรวจสูตรด้วย node: `node -e "global.window=globalThis;eval(require('fs').readFileSync('public/calc.js','utf8'));..."`
+
+## v31
+- `media.js`: คลังสื่อ `settings.media = [{id,title,url,kind,grades,note,at}]` · คาบ `se.media = [id]` · `mediaUsage(id)` สแกนทุกวิชาทุกคาบ · `mediaBlock(c,se)` ใช้ใน Live side card และ r3work · `viewMedia()` (S.view='media') · `MEDIA_ACT`
+- live.js: `se.acts = [{k:'pick',s:[sid]}|{k:'group',name,n,set}, t]` ผ่าน `logAct` · Class Tools เลือกคาบด้วย `S.toolsSe[cid]` ('live'|sessionId|'none') `toolsSe(c, create)` · `c.groupSets[i]` มี `se,date,period` · `groupSetFor(c,se)` · `actLog(c,se)` รวมคะแนนพิเศษรายกลุ่ม
+- `liveSetStatus` ตั้ง `se.inRoom[sid]=1` เสมอ (เช็คจากรายชื่อ = เข้าห้อง 3 มิติ)
+- iPad: `.main`/`.side` มี padding-top: env(safe-area-inset-top) (แถบสถานะทับหัวเมื่อเปิดจากไอคอนหน้าจอ) · 600–1366px หัวหน้าตัดบรรทัดแทนการตัดชื่อ
+- v32: `mediaEmbed(url)` แปลงลิงก์เป็นแบบฝัง (YouTube embed, Slides /embed, Docs/Sheets /preview, Forms embedded, Drive /preview, Canva /view?embed, รูป img) และ `mediaViewer(m)` เปิดเป็นหน้าต่างเต็มจอ #mdView (ACT mediaView)

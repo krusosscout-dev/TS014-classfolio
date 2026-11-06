@@ -194,6 +194,10 @@ function r3work(c, se) {
       <div class="r3w-list">${tasks.map(item).join('') || '<p class="note r3w-empty">ยังไม่มีงาน กด "สั่งงาน/การบ้าน" งานจะเพิ่มเข้าสมุดคะแนนให้อัตโนมัติ</p>'}</div>
     </div>
     <div class="r3w-col">
+      <div class="r3w-h"><span class="ic" data-hue="pink">${ico('film')}</span><span><b>สื่อการสอนคาบนี้</b><small>แตะเพื่อเปิดสื่อ · เพิ่มจากคลังสื่อได้</small></span></div>
+      ${mediaBlock(c, se)}
+    </div>
+    <div class="r3w-col">
       <div class="r3w-h"><span class="ic" data-hue="amber">${ico('pen')}</span><span><b>กระดานความจำ</b><small>โน้ตของวิชานี้ ขึ้นบนกระดานในห้องด้วย</small></span><button class="btn sm" data-act="r3Memo">${ico('plus')} เพิ่มโน้ต</button></div>
       <div class="r3w-memos">${memos.map(m => `<button class="r3-memo" data-hue="${m.hue || 'amber'}" data-act="r3Memo" data-v="${m.id}"><span>${esc(m.text).replace(/\n/g, '<br>')}</span><small>${esc(thaiDate(m.date || today))}</small></button>`).join('') || '<p class="note r3w-empty">ยังไม่มีโน้ต</p>'}</div>
     </div>
@@ -317,7 +321,7 @@ const R3_ACT = {
     const pool = Calc.activeStudents(c).filter(s => !Calc.ABSENT_STATUS.includes(se ? ((se.att || {})[s.id] || 'มา') : 'มา'));
     if (!pool.length) { toast('ไม่มีนักเรียนที่มาเรียน'); return; }
     const R = r3s(); let i = 0; const spin = Math.min(12, pool.length * 2);
-    const tick = () => { R.spot = pool[Math.floor(Math.random() * pool.length)].id; render(); if (++i < spin) setTimeout(tick, 70 + i * 18); };
+    const tick = () => { R.spot = pool[Math.floor(Math.random() * pool.length)].id; if (++i >= spin) { const s2 = ensureSession(c); logAct(s2, { k: 'pick', s: [R.spot] }); touch(c); } render(); if (i < spin) setTimeout(tick, 70 + i * 18); };
     tick();
   },
   r3Board() { const el = $('#r3work'); if (el) { if (S.r3 && S.r3.full) { S.r3.full = false; render(); } const w = $('#r3work'); w.scrollIntoView({ behavior: 'smooth', block: 'start' }); w.classList.remove('flash'); void w.offsetWidth; w.classList.add('flash'); } },

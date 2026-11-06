@@ -178,6 +178,7 @@ function pageMeta(c) {
   if (S.view === 'timetable') return { icon: 'calendar', hue: 'cyan', title: 'ตารางสอน', crumb: 'ตารางสอนของฉัน และตารางเรียนรายห้อง' };
   if (S.view === 'live') { const L = S.live || {}; return { icon: 'live', hue: 'rose', title: 'Live Class', crumb: 'เช็คชื่อ · บันทึกการสอน · มอบงาน · คะแนนพิเศษ' + (L.date ? ' · ' + thaiDate(L.date) + ' คาบ ' + L.period : '') }; }
   if (S.view === 'tools') return { icon: 'dice', hue: 'violet', title: 'Class Tools', crumb: 'สุ่มชื่อ · จับกลุ่ม' };
+  if (S.view === 'media') return { icon: 'film', hue: 'pink', title: 'คลังสื่อการสอน', crumb: 'เก็บลิงก์สื่อ แล้วแนบให้คาบที่สอน' };
   if (S.view === 'roster') return { icon: 'users', hue: 'teal', title: 'ทะเบียนนักเรียน', crumb: 'รายชื่อกลางรายชั้น ใช้ได้ทุกรายวิชา' };
   if (!c) return { icon: 'book', hue: 'indigo', title: 'ClassFolio', crumb: '' };
   const t = TABS.find(x => x[0] === S.tab) || TABS[0];
@@ -196,7 +197,7 @@ function render() {
   const todo = todoMap(c);
   const m = pageMeta(c);
   const sorted = activeCourses().concat(c && !activeCourses().includes(c) ? [c] : []).slice().sort((a, b) => (b.year - a.year) || String(b.term).localeCompare(String(a.term)) || thColl.compare(a.code, b.code));
-  const isOn = k => ['home', 'timetable', 'settings', 'live', 'tools', 'roster'].includes(k) ? S.view === k : S.view === 'course' && S.tab === k;
+  const isOn = k => ['home', 'timetable', 'settings', 'live', 'tools', 'roster', 'media'].includes(k) ? S.view === k : S.view === 'course' && S.tab === k;
   const navBtn = (act, v, label, ic, hue, n) => `<button class="nav ${isOn(v || act) ? 'on' : ''}" data-hue="${hue}" data-act="${act}" ${v ? `data-v="${v}"` : ''} ${act === 'tab' && !c ? 'disabled' : ''}><span class="chipico">${ico(ic)}</span><span class="nl">${label}</span>${n ? `<span class="todo" title="หน้า ปพ.5 ที่ยังไม่ครบ ${n} หน้า">${n}</span>` : ''}</button>`;
   const initial = String(S.settings.teacher || 'ครู').trim().charAt(0);
   root.innerHTML = `
@@ -208,6 +209,7 @@ function render() {
         ${navBtn('live', '', 'Live Class', 'live', 'rose')}
         ${navBtn('timetable', '', 'ตารางสอน', 'calendar', 'cyan')}
         ${navBtn('tools', '', 'Class Tools', 'dice', 'violet')}
+        ${navBtn('media', '', 'คลังสื่อ', 'film', 'pink')}
         ${navBtn('roster', '', 'ทะเบียนนักเรียน', 'users', 'teal')}
       </div>
       <div class="side-label">รายวิชา</div>
@@ -251,7 +253,7 @@ function render() {
 
 function moreSheet() {
   const c = cur(), todo = todoMap(c);
-  const items = [['home', '', 'หน้าแรก', 'home', 'indigo'], ['live', '', 'Live Class', 'live', 'rose'], ['timetable', '', 'ตารางสอน', 'calendar', 'cyan'], ['tools', '', 'Class Tools', 'dice', 'violet'], ['roster', '', 'ทะเบียนนักเรียน', 'users', 'teal']].concat(c ? TABS.map(([k, n, ic, hue]) => ['tab', k, n, ic, hue]) : []).concat([['settings', '', 'ตั้งค่า', 'settings', 'slate']]);
+  const items = [['home', '', 'หน้าแรก', 'home', 'indigo'], ['live', '', 'Live Class', 'live', 'rose'], ['timetable', '', 'ตารางสอน', 'calendar', 'cyan'], ['tools', '', 'Class Tools', 'dice', 'violet'], ['media', '', 'คลังสื่อ', 'film', 'pink'], ['roster', '', 'ทะเบียนนักเรียน', 'users', 'teal']].concat(c ? TABS.map(([k, n, ic, hue]) => ['tab', k, n, ic, hue]) : []).concat([['settings', '', 'ตั้งค่า', 'settings', 'slate']]);
   const d = document.createElement('dialog'); d.className = 'dlg sheet-dlg';
   d.innerHTML = `<div class="dlg-h"><h2>เมนูทั้งหมด</h2><button class="btn ghost sm" data-x aria-label="ปิด">✕</button></div>
     ${c ? `<button class="sheet-course ${lvClass(c)}" data-go="pick"><span class="lv">${levelOfCourse(c)}</span><span><b>${esc(c.code)} ${esc(c.name)}</b><small>${esc(classOf(c))} · ${esc(courseTermUI(c))} · แตะเพื่อเปลี่ยนวิชา</small></span>${ico('chev')}</button>` : ''}
@@ -271,6 +273,7 @@ function renderView(c) {
   if (S.view === 'timetable') return viewTimetable();
   if (S.view === 'live') return viewLive();
   if (S.view === 'tools') return viewTools();
+  if (S.view === 'media') return viewMedia();
   if (S.view === 'roster') return viewRoster();
   if (!c) return `${Store.mode === 'local' ? localBanner() : ''}<div class="card empty"><h3>ยังไม่มีรายวิชา</h3><p>สร้างรายวิชาแรก หรือโหลดข้อมูลตัวอย่างเพื่อทดลองใช้</p><div class="row"><button class="btn pri" data-act="newCourse">${ico('plus')} สร้างรายวิชา</button><button class="btn" data-act="demo">โหลดข้อมูลตัวอย่าง</button></div></div>`;
   const v = { overview: viewOverview, book: viewBook, conv: viewConv, teach: viewTeach, structure: viewStructure, desc: viewDesc, students: viewStudents, att: viewAtt, assess: viewAssess, results: viewResults, print: viewPrint, log: viewLog }[S.tab] || viewOverview;
@@ -545,7 +548,7 @@ const ACT = {
     toast('ดาวน์โหลดไฟล์สำรองแล้ว');
   }
 };
-Object.assign(ACT, LIVE_ACT, TERM_ACT, ROSTER_ACT, SEAT_ACT, R3_ACT);
+Object.assign(ACT, LIVE_ACT, TERM_ACT, ROSTER_ACT, SEAT_ACT, R3_ACT, MEDIA_ACT);
 function coursePicker() {
   const list = activeCourses().sort((a, b) => (b.year - a.year) || thColl.compare(a.code, b.code)), arc = archivedCourses();
   const d = dialog('เลือกรายวิชา', `<div style="display:grid;gap:6px">${list.map(x => `<button class="btn ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(classOf(x))} · ${esc(termLabel(x))}</button>`).join('')}<button class="btn" data-pick="new">${ico('plus')} สร้างรายวิชา</button>${arc.length ? `<div class="side-label" style="color:var(--muted);margin-top:6px">คลังภาคเรียนเก่า</div>${arc.map(x => `<button class="btn ghost ${x.id === S.cur ? 'pri' : ''}" data-pick="${x.id}" style="justify-content:flex-start;white-space:normal;text-align:left"><b>${esc(x.code)}</b> ${esc(x.name)} · ${esc(classOf(x))} · ${esc(termLabel(x))}</button>`).join('')}` : ''}</div>`, []);

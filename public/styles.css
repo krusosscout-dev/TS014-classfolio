@@ -80,7 +80,7 @@ h1 { font-size: 1.45rem; } h2 { font-size: 1.15rem; } h3 { font-size: 1rem; }
 
 /* ---------- โครงแอป ---------- */
 .app { display: grid; grid-template-columns: 256px minmax(0, 1fr); min-height: 100%; }
-.side { background: var(--side); color: var(--side-ink); position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding-left: env(safe-area-inset-left, 0px); }
+.side { background: var(--side); color: var(--side-ink); position: sticky; top: 0; height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding-left: env(safe-area-inset-left, 0px); padding-top: env(safe-area-inset-top, 0px); }
 .brand { display: flex; align-items: center; gap: 11px; padding: 18px 18px 14px; text-align: left; background: none; border: 0; cursor: pointer; color: inherit; }
 .brand-mark { width: 38px; height: 38px; border-radius: 11px; background: #7444dc; color: #fff; display: grid; place-items: center; font: 600 18px var(--font-head); flex: none; box-shadow: 0 4px 14px rgba(116, 68, 220, .45); }
 .brand b { font-family: var(--font-head); font-size: 1.08rem; display: block; line-height: 1.2; }
@@ -113,7 +113,7 @@ h1 { font-size: 1.45rem; } h2 { font-size: 1.15rem; } h3 { font-size: 1rem; }
 .legend .todo, .note .todo { min-width: 16px; height: 16px; font-size: .64rem; }
 .lv-p { --lvc: #0fa597; } .lv-t { --lvc: #5b67f1; }
 
-.main { min-width: 0; display: flex; flex-direction: column; }
+.main { min-width: 0; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
 .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; padding-block: 14px 10px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); background: linear-gradient(var(--bg) 70%, transparent); }
 .tb-card { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: 16px; padding: 10px 12px 10px 10px; box-shadow: var(--shadow); }
 .pageico { width: 42px; height: 42px; border-radius: 12px; background: var(--h, var(--accent)); color: #fff; display: grid; place-items: center; flex: none; }
@@ -1318,3 +1318,70 @@ select.inp, .toolbar select { background-image: url("data:image/svg+xml,%3Csvg x
 .r3-hues { display: flex; gap: 8px; } .r3-hues button { width: 34px; height: 34px; border-radius: 10px; border: 0; cursor: pointer; background: color-mix(in srgb, var(--h) 45%, #fffdf3); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
 .r3-hues button.on { box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--h); }
 
+
+/* แท็บเล็ต/ไอแพด: หัวหน้าไม่ถูกบีบ ถ้าที่ไม่พอให้ปุ่มด้านขวาขึ้นบรรทัดใหม่ แทนการตัดชื่อหน้า */
+@media (max-width: 1366px) and (min-width: 600px) {
+  .tb-card { flex-wrap: wrap; row-gap: 8px; }
+  .tb-card .title { flex: 1 1 200px; }
+  .tb-card .top-actions { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+}
+
+/* เช็คชื่อแบบรายชื่อ: ยังไม่เช็ค = ยืนรอหน้าห้อง 3 มิติ */
+.att-row.wait { background: color-mix(in srgb, #e08a00 7%, var(--panel)); }
+.att-row .wait-tag { display: inline-block; margin-left: 8px; font-size: .72rem; font-weight: 700; color: #a15c00; background: #fff1d6; padding: 1px 8px; border-radius: 99px; vertical-align: 1px; }
+/* กิจกรรมในคาบ */
+.act-log { display: grid; gap: 4px; max-height: 260px; overflow: auto; padding-right: 2px; }
+.act-i { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; background: var(--panel-2); font-size: .84rem; }
+.act-i .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--h) 15%, var(--panel)); color: var(--h); } .act-i .ic .ico { width: 14px; height: 14px; }
+.act-i time { font-size: .74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tools-se { display: inline-flex; flex-wrap: nowrap; gap: 6px; align-items: center; white-space: nowrap; min-width: 0; max-width: 100%; } .tools-se .ico { width: 16px; height: 16px; color: var(--muted); } .tools-se select { width: auto; max-width: min(340px, 60vw); }
+.tools-log { margin-top: 10px; } .tools-log summary { cursor: pointer; font-size: .86rem; color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+/* คลังสื่อ */
+.md-grades { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.md-grades button { border: 1.5px solid var(--line); background: var(--panel); color: var(--ink-2); border-radius: 10px; padding: 5px 12px; font: 600 .84rem var(--font-ui); cursor: pointer; }
+.md-grades button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.md-grades.pick { margin-top: 4px; }
+.md-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.md-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); border-top: 4px solid var(--h); }
+.md-open { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; border: 0; background: none; padding: 0; font: inherit; text-align: left; cursor: pointer; width: 100%; }
+.md-open > .ico { width: 16px; height: 16px; color: var(--muted); flex: none; }
+.md-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--h) 15%, var(--panel)); color: var(--h); } .md-ic .ico { width: 20px; height: 20px; }
+.md-t { flex: 1; min-width: 0; } .md-t small { display: block; font-size: .74rem; color: var(--h); font-weight: 700; } .md-t b { display: block; font-family: var(--font-head); line-height: 1.3; }
+.md-open:hover b { color: var(--accent); }
+.md-note { margin: 0; font-size: .86rem; color: var(--ink-2); }
+.md-tags { display: flex; flex-wrap: wrap; gap: 4px; } .md-tags .chip.ghost { opacity: .7; }
+.md-use summary { cursor: pointer; font-size: .82rem; color: var(--muted); } .md-use ul { margin: 6px 0 0; padding-left: 18px; font-size: .82rem; } .md-use li { margin: 3px 0; }
+.linkish { border: 0; background: none; padding: 0; color: var(--ink-2); font: inherit; cursor: pointer; text-align: left; } .linkish:hover { color: var(--accent); text-decoration: underline; }
+.md-act { display: flex; gap: 6px; margin-top: auto; flex-wrap: wrap; }
+/* สื่อของคาบ */
+.md-se { display: grid; gap: 6px; }
+.md-chip { display: flex; align-items: stretch; border-radius: 12px; background: color-mix(in srgb, var(--h) 9%, var(--panel)); border: 1px solid color-mix(in srgb, var(--h) 30%, transparent); overflow: hidden; }
+.md-chip .md-chip-open { border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.md-chip .md-chip-open, .md-chip a { flex: 1; min-width: 0; display: grid; grid-template-columns: 10px 1fr auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 7px 10px; color: var(--ink); text-decoration: none; }
+.md-chip .dot { grid-row: span 2; width: 10px; height: 10px; border-radius: 50%; background: var(--h); }
+.md-chip .md-chip-open b, .md-chip a b { font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .md-chip .md-chip-open small, .md-chip a small { grid-column: 2; font-size: .72rem; color: var(--muted); }
+.md-chip .md-chip-open .ico, .md-chip a .ico { grid-row: 1 / span 2; grid-column: 3; width: 15px; height: 15px; color: var(--h); }
+.md-chip .x { border: 0; background: transparent; color: var(--muted); padding: 0 12px; cursor: pointer; font-size: .9rem; } .md-chip .x:hover { color: var(--bad); background: var(--bad-soft); }
+.mp-list { display: grid; gap: 6px; max-height: 52vh; overflow: auto; }
+.mp-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); cursor: pointer; }
+.mp-row:has(input:checked) { border-color: var(--h); background: color-mix(in srgb, var(--h) 8%, var(--panel)); }
+.mp-row .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--h); flex: none; } .mp-row .t b { display: block; } .mp-row .t small { color: var(--muted); font-size: .78rem; }
+
+.md-play { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; font-weight: 700; color: var(--h); background: color-mix(in srgb, var(--h) 12%, var(--panel)); padding: 4px 10px; border-radius: 99px; }
+.md-play .ico { width: 14px; height: 14px; }
+.md-chip a.ext { flex: none; display: grid; place-items: center; padding: 0 10px; color: var(--muted); border-left: 1px solid color-mix(in srgb, var(--h) 25%, transparent); }
+.md-chip a.ext .ico { width: 15px; height: 15px; }
+/* หน้าต่างเปิดดูสื่อ */
+.md-view { position: fixed; inset: 0; z-index: 130; display: flex; flex-direction: column; background: rgba(10,13,32,.92); backdrop-filter: blur(6px);
+  padding: calc(10px + env(safe-area-inset-top, 0px)) calc(10px + env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) calc(10px + env(safe-area-inset-left, 0px)); animation: mvIn .18s ease-out; }
+@keyframes mvIn { from { opacity: 0; } to { opacity: 1; } }
+.mv-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 14px; background: var(--panel); margin-bottom: 10px; }
+.mv-bar .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--h); flex: none; }
+.mv-t { flex: 1; min-width: 0; } .mv-t b { display: block; font-family: var(--font-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mv-t small { color: var(--muted); font-size: .78rem; }
+.mv-body { flex: 1; min-height: 0; border-radius: 14px; overflow: hidden; background: #000; display: grid; place-items: center; }
+.mv-body iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+.mv-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.mv-tip { margin: 8px 4px 0; color: #dfe3ff; font-size: .82rem; display: flex; gap: 6px; align-items: center; } .mv-tip .ico { width: 15px; height: 15px; flex: none; }
+@media (max-width: 640px) { .mv-bar .btn { padding: 0 10px; font-size: .8rem; } .mv-bar .btn .ico { display: none; } }
+.mv-bar a.btn { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.md-view[data-k="youtube"] .mv-body iframe { background: #000; aspect-ratio: 16 / 9; height: auto; max-height: 100%; }
